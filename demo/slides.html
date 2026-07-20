@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>guidemd — executable, dimension-aware guides</title>
+<style>
+  :root { --accent: #7c3aed; --muted: #6b6b76; --border: #e2e2e8; }
+  html, body { height: 100%; margin: 0; }
+  body { font: 20px/1.55 -apple-system, "Segoe UI", sans-serif; color: #1a1a22;
+         display: flex; align-items: center; justify-content: center; background: #fafafa; }
+  .slide { display: none; width: min(920px, 88vw); padding: 3rem 3.5rem;
+           background: #fff; border: 1px solid var(--border); border-radius: 16px;
+           box-shadow: 0 8px 40px rgba(0,0,0,.06); }
+  .slide.active { display: block; }
+  h1 { font-size: 2rem; margin: 0 0 .4rem; }
+  h2 { font-size: 1.4rem; margin: 0 0 1.2rem; color: var(--accent); }
+  .sub { color: var(--muted); }
+  pre { background: #16161d; color: #e8e8f0; padding: 1rem 1.2rem; border-radius: 10px;
+        font-size: .72em; line-height: 1.5; overflow-x: auto; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  li { margin: .45rem 0; }
+  table { border-collapse: collapse; font-size: .85em; }
+  th, td { border: 1px solid var(--border); padding: .5rem .8rem; text-align: left; }
+  th { background: #faf9fd; }
+  .foot { position: fixed; bottom: 1rem; right: 1.4rem; color: var(--muted);
+          font-size: .75rem; }
+  b.a { color: var(--accent); }
+  .principle { margin: .45rem 0; }
+  .principle b { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<section class="slide active">
+  <h1>guidemd</h1>
+  <h2>Executable, dimension-aware guides for llm-d</h2>
+  <p>One authored markdown file per guide →</p>
+  <ul>
+    <li>an <b class="a">interactive page</b> with configuration pickers (llm-d.ai)</li>
+    <li>a <b class="a">readable GitHub copy</b> — default path expanded, alternatives collapsed</li>
+    <li>an <b class="a">executable CI run</b> for every tested configuration</li>
+  </ul>
+  <p class="sub">Derived, never duplicated — so they can't drift. (→ / ← to navigate)</p>
+</section>
+
+<section class="slide">
+  <h2>The problem</h2>
+  <ul>
+    <li>A guide varies along <b>6 dimensions</b>: infra provider, router mode,
+        accelerator, model server, model, monitoring</li>
+    <li>Today: one monolithic README — <i>"comment out the above and uncomment
+        the below"</i> — readers execute the branching in their heads</li>
+    <li>CI scrapes bash out of prose → <b>docs and CI drift</b></li>
+    <li>Prereqs / verification / benchmark sections <b>copy-pasted</b> across guides</li>
+  </ul>
+</section>
+
+<section class="slide">
+  <h2>Design principles</h2>
+  <div class="principle"><b>1 · One authored source.</b> Exactly one guide.template.md per guide — no forks per dimension value.</div>
+  <div class="principle"><b>2 · Everything else is generated.</b> Readers and CI consume derived artifacts; the PR gate blocks drift.</div>
+  <div class="principle"><b>3 · Explicitly executable.</b> A step marker is how CI finds scripts; an unmarked bash block fails validation.</div>
+  <div class="principle"><b>4 · Content is opaque to CI.</b> CI mimics a human: run steps top to bottom. Metadata passes through, uninterpreted.</div>
+  <div class="principle"><b>5 · Constraints, not enumeration.</b> Ordered dimensions + 4 rules: 336 combos → 56 valid → 8 tested.</div>
+  <div class="principle"><b>6 · Compose, don't copy.</b> Shared sections are imported fragments with parameters.</div>
+</section>
+
+<section class="slide">
+  <h2>Three personas, one source</h2>
+  <table>
+    <tr><th>Persona</th><th>Touches</th><th>Gets</th></tr>
+    <tr><td><b>Writer</b></td>
+        <td>plain markdown + two statements (<code>when</code>, <code>import</code>)</td>
+        <td>a thin guide: env choices + 6 import lines + prose</td></tr>
+    <tr><td><b>Reader</b></td>
+        <td>readonly-guide.html / readonly-guide.md</td>
+        <td>pickers in dimension order, deep links · GitHub copy with collapsible alternatives</td></tr>
+    <tr><td><b>CI</b></td>
+        <td><code>plan --set dim=value … --format yaml|bash</code></td>
+        <td>an executable, verifiable run — exactly what a human would type</td></tr>
+  </table>
+  <p class="sub">Multiple writers: fragments + <code>when</code> regions map ownership to files → CODEOWNERS.</p>
+</section>
+
+<section class="slide">
+  <h2>The entire syntax</h2>
+<pre>&lt;!-- when accelerator=gpu model=Qwen/Qwen3-32B --&gt;   conditional region; nestable
+…prose and/or code…                                  k=v1|v2 for multi-value
+&lt;!-- end --&gt;
+
+&lt;!-- import ../common/verify.md key=value --&gt;        shared fragment, one line
+
+&lt;!-- step --&gt;                                        next ```bash fence is a step
+&lt;!-- step ci=skip anything=else --&gt;                  …optional opaque metadata
+
+{{ accelerator }}                                    the picked value, inline</pre>
+  <p>No section schema. No phases. No step ids. Steps run in document order —
+     like a human reading the page.</p>
+</section>
+
+<section class="slide">
+  <h2>Dimensions: pick in order, constrain by rule</h2>
+<pre>dimensions:                      # declaration order = pick order
+  infra_provider: { values: [base, gke] }
+  router_mode:    { values: [standalone, gateway] }
+  accelerator:    { values: [gpu, amd, xpu, hpu, tpu/v6, tpu/v7, cpu] }
+  model_server:   { values: [vllm, sglang, trtllm] }
+  model:          { values: [Qwen/Qwen3-32B, openai/gpt-oss-120b] }
+  monitoring:     { values: ["off", "on"] }
+rules:                           # earlier dims narrow later dims
+  - when:  { infra_provider: gke }
+    allow: { accelerator: [gpu, tpu/v6, tpu/v7] }
+ci:                              # tested cells: complete flattened rows
+  - { infra_provider: gke, router_mode: standalone, accelerator: tpu/v6, … }</pre>
+  <p><b class="a">336</b> raw combinations → <b class="a">56</b> valid → <b class="a">8</b> CI jobs.
+     Invalid combos are unselectable in the UI and rejected by <code>plan</code>.</p>
+</section>
+
+<section class="slide">
+  <h2>Derived artifacts</h2>
+<pre>guide.template.md ──┬── render-md ───▶ readonly-guide.md    committed GitHub copy
+(authored source)   ├── render-html ─▶ readonly-guide.html  interactive picker page
+                    ├── plan ────────▶ yaml / bash          executable CI run
+                    ├── matrix ──────▶ ci cells             the CI job matrix
+                    └── validate ────▶ pass / fail          PR gate (drift = red)</pre>
+<pre># the CI job for one matrix cell — no markdown scraping, ever:
+guidemd.py plan guide.template.md --set infra_provider=gke \
+  --set accelerator=tpu/v6 --skip ci=skip --format bash | bash</pre>
+</section>
+
+<section class="slide">
+  <h2>Live demo</h2>
+  <ul>
+    <li><b>Reader:</b> open <code>readonly-guide.html</code> — pick gke → accelerator menu
+        narrows to gpu/tpu; pick trtllm → the router values swap; URL is shareable</li>
+    <li><b>GitHub:</b> <code>readonly-guide.md</code> — default path linear,
+        10 <i>Alternative</i> sections collapsed</li>
+    <li><b>Writer:</b> <code>guide.template.md</code> — 6 import lines; the helm/kubectl
+        mechanics live once in <code>guides/common/</code></li>
+    <li><b>CI:</b> <code>plan … --format yaml</code> — structured steps with opaque metadata;
+        <code>matrix --github</code> — the 8 tested cells</li>
+  </ul>
+</section>
+
+<section class="slide">
+  <h2>Status & next steps</h2>
+  <ul>
+    <li>✅ Full-fidelity port of upstream <code>optimized-baseline</code> —
+        automated coverage check against the real README, no loss of information</li>
+    <li>✅ Compiler ≈ 700 lines of dependency-light Python (PyYAML only)</li>
+    <li>Next: adopt in llm-d repo (incremental, per guide) · llm-d.ai build
+        integration (<code>render-html</code> in the website pipeline) · CI runner
+        consuming the yaml plan · migrate remaining guides onto shared fragments</li>
+  </ul>
+  <p class="sub">Builds on PR #1988's direction: machine-readable guides — moving the
+     source of truth into the markdown itself.</p>
+</section>
+
+<div class="foot"><span id="pos"></span> · ←/→</div>
+<script>
+const slides = [...document.querySelectorAll('.slide')];
+let i = 0;
+const pos = document.getElementById('pos');
+function show(n) {
+  slides[i].classList.remove('active');
+  i = Math.max(0, Math.min(slides.length - 1, n));
+  slides[i].classList.add('active');
+  pos.textContent = (i + 1) + ' / ' + slides.length;
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') show(i + 1);
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') show(i - 1);
+});
+document.addEventListener('click', () => show(i + 1));
+show(0);
+</script>
+</body>
+</html>
