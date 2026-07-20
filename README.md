@@ -32,9 +32,10 @@ guide.template.md ──┬── render-md ───▶ readonly-guide.md    co
   reachable by CI or explicitly excluded.
 
 **For guide writers**
-- An experience **close to writing plain markdown**, with the smallest
-  possible syntax on top; plain markdown itself stays valid (migration,
-  experiments).
+- **Plain markdown must remain valid** (migration, experiments). Keeping the
+  authoring experience close to plain markdown — the smallest possible syntax
+  on top — is a nice-to-have rather than a hard requirement, but one this
+  design deliberately optimizes for.
 - **Multiple writers** — each owning a dimension (e.g. one team owns GKE) —
   without stepping on each other's prose.
 - Common sections **maintained once**, imported everywhere.
