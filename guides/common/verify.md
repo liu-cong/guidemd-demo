@@ -7,7 +7,7 @@
 Open a temporary interactive shell inside the cluster and send a completion
 request (model-aware; `MODEL` is set in the environment section above):
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl run curl-test --rm -i --restart=Never \
   --image=${CURL_TEST_IMAGE} \

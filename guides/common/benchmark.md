@@ -40,7 +40,7 @@ tells the CLI which deployment topology the cluster is actually running):
 
 <!-- import get-router-ip.md -->
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 export ENDPOINT_URL="http://${IP}"
 ```
@@ -67,7 +67,7 @@ running the CLI; by default the CLI auto-generates a timestamped workspace and
 prints its full path in the logs. Pass `--workspace <DIR>` (before the `run`
 subcommand) to choose where results land.
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 llmdbenchmark \
   --spec           guides/${GUIDE_NAME} \

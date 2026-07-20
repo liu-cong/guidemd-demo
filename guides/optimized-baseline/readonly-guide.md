@@ -120,7 +120,7 @@ source ${REPO_ROOT}/guides/env.sh
 
 - Install the Gateway API Inference Extension CRDs:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/${GAIE_VERSION}/v1-manifests.yaml
 ```
@@ -201,7 +201,7 @@ export MONITORING_VALUES="-f ${REPO_ROOT}/guides/recipes/router/features/monitor
 This deploys the llm-d Router in
 [Standalone Mode](../../docs/architecture/core/router/proxy.md):
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 helm install ${GUIDE_NAME} \
   ${ROUTER_STANDALONE_CHART} \
@@ -210,6 +210,7 @@ helm install ${GUIDE_NAME} \
   ${ROUTER_VALUES} \
   -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
 ```
+
 <!-- end -->
 <!-- when router_mode=gateway -->
 <details><summary><em>Alternative — Router mode: gateway</em></summary>
@@ -224,7 +225,7 @@ specifics) and create the Gateway:
 export PROVIDER_NAME=gke # options: none, gke, agentgateway, istio
 ```
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 helm upgrade -i llm-d-inference-gateway ${REPO_ROOT}/guides/recipes/gateway/ \
   --set gateway.name=llm-d-inference-gateway \
@@ -234,7 +235,7 @@ helm upgrade -i llm-d-inference-gateway ${REPO_ROOT}/guides/recipes/gateway/ \
 
 Wait for the Gateway to be programmed:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl wait --for=condition=Programmed gateway/llm-d-inference-gateway \
   -n ${NAMESPACE} --timeout=300s
@@ -242,7 +243,7 @@ kubectl wait --for=condition=Programmed gateway/llm-d-inference-gateway \
 
 Then deploy the llm-d router and an HTTPRoute that connects it to the Gateway:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 helm install ${GUIDE_NAME} \
   ${ROUTER_GATEWAY_CHART} \
@@ -260,7 +261,7 @@ helm install ${GUIDE_NAME} \
 
 Wait for the router rollout to complete before continuing:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl rollout status deployment -l app.kubernetes.io/instance=${GUIDE_NAME} \
   -n ${NAMESPACE} --timeout=300s
@@ -300,7 +301,7 @@ export KUSTOMIZE_DIR=${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/{{ accelerato
 Apply the Kustomize overlay selected above (`KUSTOMIZE_DIR` — the same
 variable tears the model server down in Cleanup):
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl apply -n ${NAMESPACE} -k ${KUSTOMIZE_DIR}
 ```
@@ -308,7 +309,7 @@ kubectl apply -n ${NAMESPACE} -k ${KUSTOMIZE_DIR}
 Model servers pull the model on first start, which can take a while. Wait for
 all pods to become ready:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl wait --for=condition=Ready pod \
   -l llm-d.ai/inferenceServing=true \
@@ -326,7 +327,7 @@ kubectl wait --for=condition=Ready pod \
 
 - Deploy the monitoring resources for model servers:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl apply -n ${NAMESPACE} -k ${REPO_ROOT}/guides/recipes/modelserver/components/monitoring
 ```
@@ -370,7 +371,7 @@ under `guides/` — and which ones still need a calibration run — see the
 <!-- when router_mode=standalone -->
 **Standalone Mode**
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 export IP=$(kubectl get service ${GUIDE_NAME}-epp -n ${NAMESPACE} -o jsonpath='{.spec.clusterIP}')
 ```
@@ -380,7 +381,7 @@ export IP=$(kubectl get service ${GUIDE_NAME}-epp -n ${NAMESPACE} -o jsonpath='{
 
 **Gateway Mode**
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 export IP=$(kubectl get gateway llm-d-inference-gateway -n ${NAMESPACE} -o jsonpath='{.status.addresses[0].value}')
 ```
@@ -393,7 +394,7 @@ export IP=$(kubectl get gateway llm-d-inference-gateway -n ${NAMESPACE} -o jsonp
 Open a temporary interactive shell inside the cluster and send a completion
 request (model-aware; `MODEL` is set in the environment section above):
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl run curl-test --rm -i --restart=Never \
   --image=${CURL_TEST_IMAGE} \
@@ -459,7 +460,7 @@ tells the CLI which deployment topology the cluster is actually running):
 <!-- when router_mode=standalone -->
 **Standalone Mode**
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 export IP=$(kubectl get service ${GUIDE_NAME}-epp -n ${NAMESPACE} -o jsonpath='{.spec.clusterIP}')
 ```
@@ -469,7 +470,7 @@ export IP=$(kubectl get service ${GUIDE_NAME}-epp -n ${NAMESPACE} -o jsonpath='{
 
 **Gateway Mode**
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 export IP=$(kubectl get gateway llm-d-inference-gateway -n ${NAMESPACE} -o jsonpath='{.status.addresses[0].value}')
 ```
@@ -477,7 +478,7 @@ export IP=$(kubectl get gateway llm-d-inference-gateway -n ${NAMESPACE} -o jsonp
 </details>
 <!-- end -->
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 export ENDPOINT_URL="http://${IP}"
 ```
@@ -508,7 +509,7 @@ running the CLI; by default the CLI auto-generates a timestamped workspace and
 prints its full path in the logs. Pass `--workspace <DIR>` (before the `run`
 subcommand) to choose where results land.
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 llmdbenchmark \
   --spec           guides/${GUIDE_NAME} \
@@ -533,14 +534,14 @@ To remove the deployed components:
 
 - Uninstall the llm-d router:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 helm uninstall ${GUIDE_NAME} -n ${NAMESPACE}
 ```
 
 - Remove the model server resources (same `KUSTOMIZE_DIR` used to install):
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl delete -n ${NAMESPACE} -k ${KUSTOMIZE_DIR} --ignore-not-found=true
 ```
@@ -550,7 +551,7 @@ kubectl delete -n ${NAMESPACE} -k ${KUSTOMIZE_DIR} --ignore-not-found=true
 
 - Remove the monitoring resources:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl delete -n ${NAMESPACE} -k ${REPO_ROOT}/guides/recipes/modelserver/components/monitoring --ignore-not-found=true
 ```

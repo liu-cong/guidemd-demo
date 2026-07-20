@@ -61,9 +61,11 @@
   <div class="principle"><b>1 · One authored source.</b> Exactly one guide.template.md per guide — no forks per dimension value.</div>
   <div class="principle"><b>2 · Everything else is generated.</b> Readers and CI consume derived artifacts; the PR gate blocks drift.</div>
   <div class="principle"><b>3 · Explicitly executable.</b> A step marker is how CI finds scripts; an unmarked bash block fails validation.</div>
-  <div class="principle"><b>4 · Content is opaque to CI.</b> CI mimics a human: run steps top to bottom. Metadata passes through, uninterpreted.</div>
+  <div class="principle"><b>4 · CI is just a special user.</b> It runs steps top to bottom like a human; dry-run vs e2e are just different users skipping different opaque tags.</div>
   <div class="principle"><b>5 · Constraints, not enumeration.</b> Ordered dimensions + 4 rules: 336 combos → 56 valid → 8 tested.</div>
   <div class="principle"><b>6 · Compose, don't copy.</b> Shared sections are imported fragments with parameters.</div>
+  <div class="principle"><b>7 · Plain markdown is still a guide.</b> Zero annotations = valid guide; adopt incrementally, experiment freely.</div>
+  <div class="principle"><b>8 · Dimensions serve both sides.</b> Writers own a dimension in isolation; readers get a contextual guide with zero distraction.</div>
 </section>
 
 <section class="slide">
@@ -124,9 +126,14 @@ ci:                              # tested cells: complete flattened rows
                     ├── plan ────────▶ yaml / bash          executable CI run
                     ├── matrix ──────▶ ci cells             the CI job matrix
                     └── validate ────▶ pass / fail          PR gate (drift = red)</pre>
-<pre># the CI job for one matrix cell — no markdown scraping, ever:
-guidemd.py plan guide.template.md --set infra_provider=gke \
-  --set accelerator=tpu/v6 --skip ci=skip --format bash | bash</pre>
+<pre># every PR (cheap): dry-run — env wiring, helm template, kustomize build
+guidemd.py plan guide.template.md --set … --skip ci=skip --skip dry-run=skip | bash
+
+# nightly / matrix (real): e2e — installs, waits, verification, benchmark
+guidemd.py plan guide.template.md --set … --skip ci=skip --skip e2e=skip | bash</pre>
+  <p class="sub">Steps default to both; <code>dry-run=skip</code> marks real-world steps,
+     <code>e2e=skip hide=true</code> marks their hidden dry-run stand-ins
+     (helm template, kubectl kustomize) — in every plan, invisible to readers.</p>
 </section>
 
 <section class="slide">

@@ -26,7 +26,7 @@ export MONITORING_VALUES="-f ${REPO_ROOT}/guides/recipes/router/features/monitor
 This deploys the llm-d Router in
 [Standalone Mode](../../docs/architecture/core/router/proxy.md):
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 helm install ${GUIDE_NAME} \
   ${ROUTER_STANDALONE_CHART} \
@@ -34,6 +34,16 @@ helm install ${GUIDE_NAME} \
   ${MONITORING_VALUES} \
   ${ROUTER_VALUES} \
   -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
+```
+
+<!-- step e2e=skip hide=true -->
+```bash
+helm template ${GUIDE_NAME} \
+  ${ROUTER_STANDALONE_CHART} \
+  ${ROUTER_BASE_VALUES} \
+  ${MONITORING_VALUES} \
+  ${ROUTER_VALUES} \
+  --version ${ROUTER_CHART_VERSION} > /dev/null
 ```
 <!-- end -->
 <!-- when router_mode=gateway -->
@@ -47,7 +57,7 @@ specifics) and create the Gateway:
 export PROVIDER_NAME=gke # options: none, gke, agentgateway, istio
 ```
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 helm upgrade -i {{ gateway_name }} ${REPO_ROOT}/guides/recipes/gateway/ \
   --set gateway.name={{ gateway_name }} \
@@ -55,9 +65,16 @@ helm upgrade -i {{ gateway_name }} ${REPO_ROOT}/guides/recipes/gateway/ \
   -n ${NAMESPACE}
 ```
 
+<!-- step e2e=skip hide=true -->
+```bash
+helm template {{ gateway_name }} ${REPO_ROOT}/guides/recipes/gateway/ \
+  --set gateway.name={{ gateway_name }} \
+  --set gateway.class=${PROVIDER_NAME} > /dev/null
+```
+
 Wait for the Gateway to be programmed:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl wait --for=condition=Programmed gateway/{{ gateway_name }} \
   -n ${NAMESPACE} --timeout=300s
@@ -65,7 +82,7 @@ kubectl wait --for=condition=Programmed gateway/{{ gateway_name }} \
 
 Then deploy the llm-d router and an HTTPRoute that connects it to the Gateway:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 helm install ${GUIDE_NAME} \
   ${ROUTER_GATEWAY_CHART} \
@@ -77,11 +94,24 @@ helm install ${GUIDE_NAME} \
   --set httpRoute.inferenceGatewayName={{ gateway_name }} \
   -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
 ```
+
+<!-- step e2e=skip hide=true -->
+```bash
+helm template ${GUIDE_NAME} \
+  ${ROUTER_GATEWAY_CHART} \
+  ${ROUTER_BASE_VALUES} \
+  ${MONITORING_VALUES} \
+  ${ROUTER_VALUES} \
+  --set provider.name=${PROVIDER_NAME} \
+  --set httpRoute.create=true \
+  --set httpRoute.inferenceGatewayName={{ gateway_name }} \
+  --version ${ROUTER_CHART_VERSION} > /dev/null
+```
 <!-- end -->
 
 Wait for the router rollout to complete before continuing:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl rollout status deployment -l app.kubernetes.io/instance=${GUIDE_NAME} \
   -n ${NAMESPACE} --timeout=300s

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # optimized-baseline — generated from guides/optimized-baseline/guide.template.md
-# assignment: {'infra_provider': 'base', 'router_mode': 'standalone', 'accelerator': 'gpu', 'model_server': 'vllm', 'model': 'Qwen/Qwen3-32B', 'monitoring': 'off'}
+# assignment: {'infra_provider': 'gke', 'router_mode': 'standalone', 'accelerator': 'tpu/v6', 'model_server': 'vllm', 'model': 'Qwen/Qwen3-32B', 'monitoring': 'off'}
 set -euo pipefail
 
 # --- step 1/23 ---
@@ -45,7 +45,7 @@ kubectl rollout status deployment -l app.kubernetes.io/instance=${GUIDE_NAME} \
   -n ${NAMESPACE} --timeout=300s
 
 # --- step 10/23 ---
-export KUSTOMIZE_DIR=${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/gpu/vllm/base/
+export KUSTOMIZE_DIR=${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/tpu/v6/vllm/
 
 # --- step 11/23  [dry-run=skip] ---
 kubectl apply -n ${NAMESPACE} -k ${KUSTOMIZE_DIR}

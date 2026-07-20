@@ -40,9 +40,14 @@ source ${REPO_ROOT}/guides/env.sh
 
 - Install the Gateway API Inference Extension CRDs:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/${GAIE_VERSION}/v1-manifests.yaml
+```
+
+<!-- step e2e=skip hide=true -->
+```bash
+curl -sfL https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/${GAIE_VERSION}/v1-manifests.yaml -o /dev/null
 ```
 
 - Create a target namespace for the installation:

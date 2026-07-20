@@ -23,8 +23,27 @@ would and are identified by position, nothing more. A bash fence without a
 step marker is a validation error (nothing escapes CI silently); use a
 non-bash fence (```console, ```yaml, …) for display-only snippets. Optional
 `key=value` pairs on the marker are metadata, fully OPAQUE to this tool and
-carried into the plan verbatim — CI may interpret keys it knows (e.g.
-`ci=skip`, `name=…`) and must ignore the rest.
+carried into the plan verbatim — CI may interpret keys it knows and must
+ignore the rest. One presentation attribute is tool-read: `hide=true`
+excludes a step from BOTH reader artifacts (readonly-guide.md and the page)
+while keeping it in every plan — used for hidden dry-run equivalents of
+steps that cannot be dry-run.
+
+The dry-run convention (pure metadata + the generic `plan --skip` filter):
+
+  (no tag)                 shown to readers; runs in dry-run AND e2e
+  ci=skip                  shown; a human step CI handles out-of-band
+  dry-run=skip             shown; e2e-only (real install, wait, benchmark)
+  e2e=skip hide=true       hidden; dry-run equivalent (helm template, …)
+
+  dry-run plan:  plan --set … --skip ci=skip --skip dry-run=skip
+  e2e plan:      plan --set … --skip ci=skip --skip e2e=skip
+
+PLAIN MARKDOWN IS STILL A VALID GUIDE: a file with no front matter and no
+markers validates and renders (zero dimensions = one variant; nothing is
+executable until the first `<!-- step -->` appears). Unmarked bash fences
+are only an error once the guide has at least one step marker — so guides
+migrate incrementally and experimental guides start as plain markdown.
 
 Dimensions are ORDERED — users pick them top to bottom, and the options for
 dimension N+1 are determined by picks 1..N. Instead of enumerating every
@@ -104,10 +123,14 @@ def subst(text, mapping):
 # ================================================================ front matter
 
 def split_front_matter(text, path):
+    """Front matter is optional: a plain markdown file is a valid guide."""
     m = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
     if not m:
-        sys.exit(f"{path}: missing front matter")
-    return yaml.safe_load(m.group(1))["guide"], text[m.end():]
+        return {}, text
+    meta = yaml.safe_load(m.group(1))
+    if not isinstance(meta, dict) or "guide" not in meta:
+        sys.exit(f"{path}: front matter must contain a top-level `guide:` key")
+    return meta["guide"], text[m.end():]
 
 
 class Matrix:
@@ -115,9 +138,7 @@ class Matrix:
 
     def __init__(self, meta, errors):
         self.dims = meta.get("dimensions") or {}
-        self.order = list(self.dims)
-        if not self.dims:
-            errors.append("guide must declare at least one dimension")
+        self.order = list(self.dims)  # zero dimensions = plain guide, one variant
         self.values = {d: [str(v) for v in (s.get("values") or [])]
                        for d, s in self.dims.items()}
         self.defaults = {}
@@ -310,6 +331,26 @@ def wrap_alternatives(lines, matrix):
     return out
 
 
+def strip_hidden(lines):
+    """Drop hide=true step markers and their bash fences from reader output."""
+    out, i = [], 0
+    while i < len(lines):
+        m = RE_STEP.match(lines[i])
+        if m and parse_attrs(m.group(1)).get("hide") == "true":
+            i += 1
+            while i < len(lines) and not lines[i].strip():
+                i += 1
+            if i < len(lines) and RE_FENCE.match(lines[i]):
+                i += 1
+                while i < len(lines) and not RE_FENCE.match(lines[i]):
+                    i += 1
+                i += 1  # closing fence
+            continue
+        out.append(lines[i])
+        i += 1
+    return out
+
+
 def render_github(path):
     """The committed GitHub artifact: imports expanded, alternatives folded."""
     text = Path(path).read_text()
@@ -321,6 +362,7 @@ def render_github(path):
             print(f"ERROR: {path}: {e}", file=sys.stderr)
         sys.exit(1)
     lines = expand_imports(path, body.splitlines())
+    lines = strip_hidden(lines)
     lines = wrap_alternatives(lines, matrix)
     banner = (f"<!-- GENERATED FILE — DO NOT EDIT."
               f" Source: {Path(path).name}; regenerate with:"
@@ -347,6 +389,7 @@ class Guide:
         self.path = Path(path)
         text = self.path.read_text()
         self.meta, body = split_front_matter(text, path)
+        self.meta.setdefault("name", self.path.stem)
         self.errors = []
         self.matrix = Matrix(self.meta, self.errors)
         self.chunks = []
@@ -373,6 +416,7 @@ class Guide:
 
     def _parse(self, lines):
         dims = self.matrix.dims
+        self._unmarked = []
         stack, pending = [], None
         in_fence = fence_is_step = False
         fence_body = []
@@ -383,10 +427,13 @@ class Guide:
                 if fence and not fence.group(1):
                     in_fence = False
                     if fence_is_step:
+                        attrs = pending or {}
                         self.chunks.append({
                             "md": "```bash\n" + "\n".join(fence_body) + "\n```",
                             "conds": self._flatten(stack),
-                            "step": {"meta": pending or {}},
+                            "step": {"hidden": attrs.get("hide") == "true",
+                                     "meta": {k: v for k, v in attrs.items()
+                                              if k != "hide"}},
                         })
                         pending = None
                     else:
@@ -425,9 +472,7 @@ class Guide:
                 fence_is_step = fence.group(1) == "bash" and pending is not None
                 fence_body = []
                 if fence.group(1) == "bash" and pending is None:
-                    self.errors.append(
-                        f"line {lineno}: bash fence without a <!-- step --> marker "
-                        "(unreachable by CI; use a non-bash fence for display-only snippets)")
+                    self._unmarked.append(lineno)
                 if not fence_is_step:
                     if pending:
                         self.errors.append(
@@ -442,6 +487,12 @@ class Guide:
 
         if stack:
             self.errors.append("unclosed <!-- when --> / <!-- md-only --> block at end of file")
+        if any(c["step"] for c in self.chunks):
+            for lineno in self._unmarked:
+                self.errors.append(
+                    f"line {lineno}: bash fence without a <!-- step --> marker "
+                    "(unreachable by CI; use a non-bash fence for display-only snippets)")
+        # zero step markers = plain / not-yet-annotated guide: bash fences allowed
 
     # ------------------------------------------------------------ outputs
 
@@ -462,6 +513,8 @@ class Guide:
         out = []
         for c in self.chunks:
             if not matches(c["conds"], cell):
+                continue
+            if c["step"] and c["step"]["hidden"]:
                 continue
             out.append(subst(c["md"], cell))
         return re.sub(r"\n{3,}", "\n\n", "\n".join(out) + "\n")
@@ -671,7 +724,9 @@ def render_html(guide):
         "defaults": guide.matrix.defaults,
         "supported": guide.matrix.supported,
         "chunks": [{"md": c["md"], "conds": c["conds"], "step": c["step"]}
-                   for c in guide.chunks if MD_ONLY not in c["conds"]],
+                   for c in guide.chunks
+                   if MD_ONLY not in c["conds"]
+                   and not (c["step"] and c["step"]["hidden"])],
     }).replace("</", "<\\/")
     return (HTML_PAGE
             .replace("@@TITLE@@", guide.meta.get("title", guide.meta["name"]))

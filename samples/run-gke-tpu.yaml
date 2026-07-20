@@ -19,7 +19,9 @@ steps:
 - run: |
     export REPO_ROOT=$(realpath $(git rev-parse --show-toplevel))
     source ${REPO_ROOT}/guides/env.sh
-- run: |
+- meta:
+    dry-run: skip
+  run: |
     kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/${GAIE_VERSION}/v1-manifests.yaml
 - run: |
     kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
@@ -29,27 +31,39 @@ steps:
     export ROUTER_BASE_VALUES="-f ${REPO_ROOT}/guides/recipes/router/base.values.yaml"
 - run: |
     export MONITORING_VALUES=""
-- run: |
+- meta:
+    dry-run: skip
+  run: |
     helm install ${GUIDE_NAME} \
       ${ROUTER_STANDALONE_CHART} \
       ${ROUTER_BASE_VALUES} \
       ${MONITORING_VALUES} \
       ${ROUTER_VALUES} \
       -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
-- run: |
+- meta:
+    dry-run: skip
+  run: |
     kubectl rollout status deployment -l app.kubernetes.io/instance=${GUIDE_NAME} \
       -n ${NAMESPACE} --timeout=300s
 - run: |
     export KUSTOMIZE_DIR=${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/tpu/v6/vllm/
-- run: |
+- meta:
+    dry-run: skip
+  run: |
     kubectl apply -n ${NAMESPACE} -k ${KUSTOMIZE_DIR}
-- run: |
+- meta:
+    dry-run: skip
+  run: |
     kubectl wait --for=condition=Ready pod \
       -l llm-d.ai/inferenceServing=true \
       -n ${NAMESPACE} --timeout=1800s
-- run: |
+- meta:
+    dry-run: skip
+  run: |
     export IP=$(kubectl get service ${GUIDE_NAME}-epp -n ${NAMESPACE} -o jsonpath='{.spec.clusterIP}')
-- run: |
+- meta:
+    dry-run: skip
+  run: |
     kubectl run curl-test --rm -i --restart=Never \
       --image=${CURL_TEST_IMAGE} \
       --namespace="${NAMESPACE}" \
@@ -62,13 +76,19 @@ steps:
     cd llm-d-benchmark
     source .venv/bin/activate
     llmdbenchmark --version
-- run: |
+- meta:
+    dry-run: skip
+  run: |
     export IP=$(kubectl get service ${GUIDE_NAME}-epp -n ${NAMESPACE} -o jsonpath='{.spec.clusterIP}')
-- run: |
+- meta:
+    dry-run: skip
+  run: |
     export ENDPOINT_URL="http://${IP}"
 - run: |
     export GATEWAY_CLASS="epponly"
-- run: |
+- meta:
+    dry-run: skip
+  run: |
     llmdbenchmark \
       --spec           guides/${GUIDE_NAME} \
       run \
@@ -79,9 +99,13 @@ steps:
       --harness        "${HARNESS}" \
       --workload       "${WORKLOAD}" \
       --analyze
-- run: |
+- meta:
+    dry-run: skip
+  run: |
     helm uninstall ${GUIDE_NAME} -n ${NAMESPACE}
-- run: |
+- meta:
+    dry-run: skip
+  run: |
     kubectl delete -n ${NAMESPACE} -k ${KUSTOMIZE_DIR} --ignore-not-found=true
 - run: |
     kubectl delete namespace ${NAMESPACE}
