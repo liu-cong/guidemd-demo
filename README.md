@@ -12,6 +12,36 @@ guide.template.md ──┬── render-md ───▶ readonly-guide.md    co
                     └── validate ────▶ pass / fail          PR gate
 ```
 
+## Requirements
+
+**For guide readers**
+- An **interactive, contextual guide** on llm-d.ai: pick your configuration in
+  dimension order, see only the steps that apply, share it as a URL. Invalid
+  combinations must not be selectable.
+- Still a **readable guide on GitHub or in a local editor** — no HTML, no
+  tooling required to follow it.
+
+**For CI/CD**
+- Automatically **derive an executable, verifiable run** from the guide for
+  any supported dimension combination — docs and CI can never drift.
+- Treat the guide's content as **opaque**: CI mimics a human running the
+  steps top to bottom, with no semantic assumptions about what they mean.
+- **Affordable on every PR**: dry-run validation by default; full e2e per
+  tested matrix cell on a schedule or on demand.
+- No command can silently escape testing: every published bash block is
+  reachable by CI or explicitly excluded.
+
+**For guide writers**
+- An experience **close to writing plain markdown**, with the smallest
+  possible syntax on top; plain markdown itself stays valid (migration,
+  experiments).
+- **Multiple writers** — each owning a dimension (e.g. one team owns GKE) —
+  without stepping on each other's prose.
+- Common sections **maintained once**, imported everywhere.
+- Adopting the system must cause **no loss of information** relative to the
+  existing guides (enforced here by an automated coverage check against
+  upstream `optimized-baseline`).
+
 ## Design principles
 
 1. **One authored source.** A guide is exactly one `guide.template.md`. No

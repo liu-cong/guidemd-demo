@@ -57,6 +57,23 @@
 </section>
 
 <section class="slide">
+  <h2>Requirements</h2>
+  <table>
+    <tr><th>Reader</th>
+        <td>interactive, contextual guide (pickers, valid combos only, deep links) —
+            AND still readable on GitHub / local editor with no tooling</td></tr>
+    <tr><th>CI/CD</th>
+        <td>derive an executable, verifiable run per combination; content stays opaque
+            (mimic a human); dry-run affordable on every PR, e2e on the matrix;
+            nothing escapes testing silently</td></tr>
+    <tr><th>Writer</th>
+        <td>≈ plain markdown (which stays valid); minimal syntax; multiple writers own
+            their dimensions without collisions; common sections maintained once;
+            <b>no loss of information</b> vs existing guides</td></tr>
+  </table>
+</section>
+
+<section class="slide">
   <h2>Design principles</h2>
   <div class="principle"><b>1 · One authored source.</b> Exactly one guide.template.md per guide — no forks per dimension value.</div>
   <div class="principle"><b>2 · Everything else is generated.</b> Readers and CI consume derived artifacts; the PR gate blocks drift.</div>
