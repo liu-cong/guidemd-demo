@@ -28,6 +28,8 @@
   b.a { color: var(--accent); }
   .principle { margin: .45rem 0; }
   .principle b { color: var(--accent); }
+  .ok { color: #15803d; }
+  .warn { color: #b45309; }
 </style>
 </head>
 <body>
@@ -38,7 +40,8 @@
   <p>One authored markdown file per guide →</p>
   <ul>
     <li>an <b class="a">interactive page</b> with configuration pickers (llm-d.ai)</li>
-    <li>a <b class="a">readable GitHub copy</b> — default path expanded, alternatives collapsed</li>
+    <li>a <b class="a">readable GitHub copy</b> — default path expanded with real values,
+        alternatives collapsed</li>
     <li>an <b class="a">executable CI run</b> for every tested configuration</li>
   </ul>
   <p class="sub">Derived, never duplicated — so they can't drift. (→ / ← to navigate)</p>
@@ -47,8 +50,10 @@
 <section class="slide">
   <h2>The problem</h2>
   <ul>
-    <li>A guide varies along <b>6 dimensions</b>: infra provider, router mode,
-        accelerator, model server, model, monitoring</li>
+    <li>A guide varies along <b>7 dimensions</b>: infra provider, router mode,
+        gateway provider, accelerator, model server, model, monitoring —
+        one of them hiding in an env-var comment
+        (<code>export PROVIDER_NAME=gke # options: …</code>)</li>
     <li>Today: one monolithic README — <i>"comment out the above and uncomment
         the below"</i> — readers execute the branching in their heads</li>
     <li>CI scrapes bash out of prose → <b>docs and CI drift</b></li>
@@ -60,17 +65,16 @@
   <h2>Requirements</h2>
   <table>
     <tr><th>Reader</th>
-        <td>interactive, contextual guide (pickers, valid combos only, deep links) —
-            AND still readable on GitHub / local editor with no tooling</td></tr>
+        <td>interactive, contextual guide — pickers in dimension order, invalid combos
+            unselectable, deep-linkable URLs — AND still readable on GitHub / local
+            editor with no tooling</td></tr>
     <tr><th>CI/CD</th>
-        <td>derive an executable, verifiable run per combination; content stays opaque
-            (mimic a human); dry-run affordable on every PR, e2e on the matrix;
-            nothing escapes testing silently</td></tr>
+        <td>derive an executable, <b>verifiable</b> run for any supported combination —
+            docs and CI can never drift; dry-run affordable on <b>every PR</b>
+            (no cluster needed), full e2e on the tested matrix</td></tr>
     <tr><th>Writer</th>
-        <td>plain markdown stays valid; multiple writers own their dimensions without
-            collisions; common sections maintained once; <b>no loss of information</b>
-            vs existing guides — <i>nice-to-have:</i> authoring stays close to plain
-            markdown (minimal syntax, which this design optimizes for)</td></tr>
+        <td>plain markdown stays valid (adopt incrementally, experiment freely);
+            common sections maintained once, imported everywhere</td></tr>
   </table>
 </section>
 
@@ -78,10 +82,10 @@
   <h2>Design principles</h2>
   <div class="principle"><b>1 · One authored source.</b> Exactly one guide.template.md per guide — no forks per dimension value.</div>
   <div class="principle"><b>2 · Everything else is generated.</b> Readers and CI consume derived artifacts; the PR gate blocks drift.</div>
-  <div class="principle"><b>3 · Explicitly executable.</b> A step marker is how CI finds scripts; an unmarked bash block fails validation.</div>
+  <div class="principle"><b>3 · Explicitly executable.</b> A step marker is how CI finds scripts; an unmarked bash block fails validation; metadata keys are declared — a typo'd tag is an error, not a silent CI change.</div>
   <div class="principle"><b>4 · CI is just a special user.</b> It runs steps top to bottom like a human; dry-run vs e2e are just different users skipping different opaque tags.</div>
-  <div class="principle"><b>5 · Constraints, not enumeration.</b> Ordered dimensions + 4 rules: 336 combos → 56 valid → 8 tested.</div>
-  <div class="principle"><b>6 · Compose, don't copy.</b> Shared sections are imported fragments with parameters.</div>
+  <div class="principle"><b>5 · Constraints, not enumeration.</b> Ordered dimensions + 7 rules: 672 combos → 96 valid → 8 tested. Supported ≠ tested — the page shows which one you picked.</div>
+  <div class="principle"><b>6 · Compose, don't copy.</b> Shared sections are imported fragments with parameters; fragments import fragments.</div>
   <div class="principle"><b>7 · Plain markdown is still a guide.</b> Zero annotations = valid guide; adopt incrementally, experiment freely.</div>
   <div class="principle"><b>8 · Dimensions serve both sides.</b> Writers own a dimension in isolation; readers get a contextual guide with zero distraction.</div>
 </section>
@@ -95,10 +99,13 @@
         <td>a thin guide: env choices + 6 import lines + prose</td></tr>
     <tr><td><b>Reader</b></td>
         <td>readonly-guide.html / readonly-guide.md</td>
-        <td>pickers in dimension order, deep links · GitHub copy with collapsible alternatives</td></tr>
+        <td>pickers in dimension order, deep links,
+            <span class="ok">✓ CI-tested</span> / <span class="warn">⚠ supported</span>
+            per variant · GitHub copy with collapsible alternatives</td></tr>
     <tr><td><b>CI</b></td>
         <td><code>plan --set dim=value … --format yaml|bash</code></td>
-        <td>an executable, verifiable run — exactly what a human would type</td></tr>
+        <td>an executable, verifiable run — exactly what a human would type;
+            every step cites its source <code>file:line</code></td></tr>
   </table>
   <p class="sub">Multiple writers: fragments + <code>when</code> regions map ownership to files → CODEOWNERS.</p>
 </section>
@@ -112,29 +119,37 @@
 &lt;!-- import ../common/verify.md key=value --&gt;        shared fragment, one line
 
 &lt;!-- step --&gt;                                        next ```bash fence is a step
-&lt;!-- step ci=skip anything=else --&gt;                  …optional opaque metadata
+&lt;!-- step ci=skip --&gt;                                metadata: values opaque,
+                                                     keys declared in step_tags:
+&lt;!-- step e2e=skip hide=true --&gt;                     hidden dry-run stand-in
 
+&lt;!-- badges --&gt;                                      E2E badges derived from ci: rows
 {{ accelerator }}                                    the picked value, inline</pre>
-  <p>No section schema. No phases. No step ids. Steps run in document order —
-     like a human reading the page.</p>
+  <p>No section schema. No phases. No step ids — a <b>deliberate trade-off</b>
+     (no resume-from-step); optional stable ids are the designed escape hatch
+     if flake tracking ever needs them.</p>
 </section>
 
 <section class="slide">
   <h2>Dimensions: pick in order, constrain by rule</h2>
-<pre>dimensions:                      # declaration order = pick order
-  infra_provider: { values: [base, gke] }
-  router_mode:    { values: [standalone, gateway] }
-  accelerator:    { values: [gpu, amd, xpu, hpu, tpu/v6, tpu/v7, cpu] }
-  model_server:   { values: [vllm, sglang, trtllm] }
-  model:          { values: [Qwen/Qwen3-32B, openai/gpt-oss-120b] }
-  monitoring:     { values: ["off", "on"] }
-rules:                           # earlier dims narrow later dims
+<pre>dimensions:                        # declaration order = pick order
+  infra_provider:   { values: [base, gke] }
+  router_mode:      { values: [standalone, gateway] }
+  gateway_provider: { values: [none, gke, istio, agentgateway] }
+  accelerator:      { values: [gpu, amd, xpu, hpu, tpu/v6, tpu/v7, cpu] }
+  model_server:     { values: [vllm, sglang, trtllm] }
+  model:            { values: [Qwen/Qwen3-32B, openai/gpt-oss-120b] }
+  monitoring:       { values: ["off", "on"] }
+rules:                             # earlier dims narrow later dims
+  - when:  { router_mode: standalone }
+    allow: { gateway_provider: [none] }
   - when:  { infra_provider: gke }
     allow: { accelerator: [gpu, tpu/v6, tpu/v7] }
-ci:                              # tested cells: complete flattened rows
-  - { infra_provider: gke, router_mode: standalone, accelerator: tpu/v6, … }</pre>
-  <p><b class="a">336</b> raw combinations → <b class="a">56</b> valid → <b class="a">8</b> CI jobs.
-     Invalid combos are unselectable in the UI and rejected by <code>plan</code>.</p>
+ci:        # tested cells; badge:/workflow: rows also generate the E2E badges
+  - { infra_provider: gke, …, badge: E2E (GKE TPU v6e), workflow: …-x.yaml }</pre>
+  <p><b class="a">672</b> raw combinations → <b class="a">96</b> valid → <b class="a">8</b> CI jobs.
+     What used to be an env-var comment is a dimension — rules, not comments,
+     forbid incoherent mixes (GKE gateway class on a non-GKE cluster).</p>
 </section>
 
 <section class="slide">
@@ -143,28 +158,53 @@ ci:                              # tested cells: complete flattened rows
 (authored source)   ├── render-html ─▶ readonly-guide.html  interactive picker page
                     ├── plan ────────▶ yaml / bash          executable CI run
                     ├── matrix ──────▶ ci cells             the CI job matrix
-                    └── validate ────▶ pass / fail          PR gate (drift = red)</pre>
-<pre># every PR (cheap): dry-run — env wiring, helm template, kustomize build
+                    └── validate ────▶ pass / fail          PR gate (+ warnings)</pre>
+<pre># every PR (cheap): dry-run — env wiring, helm template, kustomize build.
+# Touches NO cluster: runs on any PR runner with zero credentials.
 guidemd.py plan guide.template.md --set … --skip ci=skip --skip dry-run=skip | bash
 
-# nightly / matrix (real): e2e — installs, waits, verification, benchmark
+# nightly / matrix (real): e2e — installs, waits, asserted verification, benchmark
 guidemd.py plan guide.template.md --set … --skip ci=skip --skip e2e=skip | bash</pre>
   <p class="sub">Steps default to both; <code>dry-run=skip</code> marks real-world steps,
-     <code>e2e=skip hide=true</code> marks their hidden dry-run stand-ins
-     (helm template, kubectl kustomize) — in every plan, invisible to readers.</p>
+     <code>e2e=skip hide=true</code> their hidden stand-ins. Verification is asserted,
+     not eyeballed: <code>curl -fsS</code> + <code>jq -e</code> fail the run unless the
+     router returns a real completion.</p>
+</section>
+
+<section class="slide">
+  <h2>Guardrails — what the gate catches</h2>
+  <ul>
+    <li><b>Errors:</b> stale <code>readonly-guide.md</code> · unmarked bash fence ·
+        undeclared step tag (<code>dry-run=skpi</code>) · unresolved import param ·
+        untested/incomplete <code>ci:</code> row</li>
+    <li><b>Warnings:</b> dead <code>when</code> region (no supported combo can enter) ·
+        a <code>when</code>-group that leaves some combo matching <b>no branch</b> —
+        the "add a value later, silently lose commands" trap ·
+        <code>validate --cells</code> prints per-variant step counts</li>
+    <li><b>Every diagnostic names the real <code>file:line</code></b> — through import
+        expansion, so an error inside a shared fragment points at the fragment</li>
+    <li><b>Coverage gate</b> vs the upstream guide: 63/88 items verbatim,
+        25 reviewed waivers, <b class="a">0 missing</b> — "no loss of information",
+        enforced, with stale waivers flagged too</li>
+    <li><b>24 tests</b> over all 96 variants: placeholder-free renders,
+        <code>bash -n</code>-valid plans, cluster-free dry-runs</li>
+  </ul>
 </section>
 
 <section class="slide">
   <h2>Live demo</h2>
   <ul>
     <li><b>Reader:</b> open <code>readonly-guide.html</code> — pick gke → accelerator menu
-        narrows to gpu/tpu; pick trtllm → the router values swap; URL is shareable</li>
-    <li><b>GitHub:</b> <code>readonly-guide.md</code> — default path linear,
-        10 <i>Alternative</i> sections collapsed</li>
+        narrows; pick standalone → gateway provider locks to <code>none</code>; header
+        shows <span class="ok">✓ CI-tested</span> or <span class="warn">⚠ supported,
+        not CI-tested</span>; URL is shareable</li>
+    <li><b>GitHub:</b> <code>readonly-guide.md</code> — default path linear with real
+        values (no <code>{{ }}</code>), 10 <i>Alternative</i> sections collapsed,
+        E2E badges generated from the <code>ci:</code> matrix</li>
     <li><b>Writer:</b> <code>guide.template.md</code> — 6 import lines; the helm/kubectl
         mechanics live once in <code>guides/common/</code></li>
-    <li><b>CI:</b> <code>plan … --format yaml</code> — structured steps with opaque metadata;
-        <code>matrix --github</code> — the 8 tested cells</li>
+    <li><b>CI:</b> <code>plan … --format yaml</code> — structured steps, each citing its
+        source <code>file:line</code>; <code>matrix --github</code> — the 8 tested cells</li>
   </ul>
 </section>
 
@@ -172,11 +212,14 @@ guidemd.py plan guide.template.md --set … --skip ci=skip --skip e2e=skip | bas
   <h2>Status & next steps</h2>
   <ul>
     <li>✅ Full-fidelity port of upstream <code>optimized-baseline</code> —
-        automated coverage check against the real README, no loss of information</li>
-    <li>✅ Compiler ≈ 700 lines of dependency-light Python (PyYAML only)</li>
-    <li>Next: adopt in llm-d repo (incremental, per guide) · llm-d.ai build
-        integration (<code>render-html</code> in the website pipeline) · CI runner
-        consuming the yaml plan · migrate remaining guides onto shared fragments</li>
+        coverage gate enforced (0 missing, waivers reviewed)</li>
+    <li>✅ One ~1,100-line Python file (PyYAML only) + 130-line coverage gate +
+        24-test suite — no framework, no build step</li>
+    <li><b>Next:</b> dogfood the PR gate as a GitHub Actions workflow in this repo ·
+        port a <b>second guide</b> (prove fragment reuse, measure migration cost) ·
+        llm-d.ai: <b>v0</b> sync <code>readonly-guide.md</code> through the existing
+        pipeline (zero site changes), <b>v1</b> <code>render-mdx</code> + one
+        <code>GuidePicker</code> component · upstream RFC to llm-d</li>
   </ul>
   <p class="sub">Builds on PR #1988's direction: machine-readable guides — moving the
      source of truth into the markdown itself.</p>
