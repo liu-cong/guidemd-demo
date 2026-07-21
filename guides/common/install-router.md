@@ -48,20 +48,16 @@ helm template ${GUIDE_NAME} \
 <!-- end -->
 <!-- when router_mode=gateway -->
 This uses a Kubernetes Gateway managed proxy rather than the standalone
-router. Set the Gateway provider, then install a Gateway implementation (see
-the [gateway guides](../../docs/infrastructure/gateway) for provider
-specifics) and create the Gateway:
-
-<!-- step -->
-```bash
-export PROVIDER_NAME=gke # options: none, gke, agentgateway, istio
-```
+router, with the **{{ gateway_provider }}** Gateway implementation (your
+pick in the configuration above; see the
+[gateway guides](../../docs/infrastructure/gateway) for provider specifics).
+Install the Gateway:
 
 <!-- step dry-run=skip -->
 ```bash
 helm upgrade -i {{ gateway_name }} ${REPO_ROOT}/guides/recipes/gateway/ \
   --set gateway.name={{ gateway_name }} \
-  --set gateway.class=${PROVIDER_NAME} \
+  --set gateway.class={{ gateway_provider }} \
   -n ${NAMESPACE}
 ```
 
@@ -69,7 +65,7 @@ helm upgrade -i {{ gateway_name }} ${REPO_ROOT}/guides/recipes/gateway/ \
 ```bash
 helm template {{ gateway_name }} ${REPO_ROOT}/guides/recipes/gateway/ \
   --set gateway.name={{ gateway_name }} \
-  --set gateway.class=${PROVIDER_NAME} > /dev/null
+  --set gateway.class={{ gateway_provider }} > /dev/null
 ```
 
 Wait for the Gateway to be programmed:
@@ -89,7 +85,7 @@ helm install ${GUIDE_NAME} \
   ${ROUTER_BASE_VALUES} \
   ${MONITORING_VALUES} \
   ${ROUTER_VALUES} \
-  --set provider.name=${PROVIDER_NAME} \
+  --set provider.name={{ gateway_provider }} \
   --set httpRoute.create=true \
   --set httpRoute.inferenceGatewayName={{ gateway_name }} \
   -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
@@ -102,7 +98,7 @@ helm template ${GUIDE_NAME} \
   ${ROUTER_BASE_VALUES} \
   ${MONITORING_VALUES} \
   ${ROUTER_VALUES} \
-  --set provider.name=${PROVIDER_NAME} \
+  --set provider.name={{ gateway_provider }} \
   --set httpRoute.create=true \
   --set httpRoute.inferenceGatewayName={{ gateway_name }} \
   --version ${ROUTER_CHART_VERSION} > /dev/null

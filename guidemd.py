@@ -11,23 +11,31 @@ THE SINGLE SOURCE RULE: a guide is exactly ONE authored markdown file
   <!-- import PATH [key=value …] -->
                         single line; pulls a shared fragment (path relative
                         to the doc) with {{ key }} params substituted.
+                        Quote values containing spaces: key="{{ param }}".
                         Fragment headings are DYNAMICALLY RE-BASED: the
                         fragment's top heading lands one level below the
                         nearest heading above the import point, so the same
                         fragment nests correctly under an H2 in one guide
                         and an H3 in another. Fragments may import fragments.
 
+  <!-- badges -->       replaced by one build badge per `ci:` row that
+                        declares `workflow:` (and optionally `badge:` label);
+                        requires `repo:` in front matter. The badge block can
+                        therefore never drift from the tested matrix.
+
 Executable steps are ```bash fences marked with a `<!-- step -->` line —
 that marker is HOW CI finds the scripts. Steps run top-to-bottom like a human
-would and are identified by position, nothing more. A bash fence without a
-step marker is a validation error (nothing escapes CI silently); use a
-non-bash fence (```console, ```yaml, …) for display-only snippets. Optional
-`key=value` pairs on the marker are metadata, fully OPAQUE to this tool and
-carried into the plan verbatim — CI may interpret keys it knows and must
-ignore the rest. One presentation attribute is tool-read: `hide=true`
-excludes a step from BOTH reader artifacts (readonly-guide.md and the page)
-while keeping it in every plan — used for hidden dry-run equivalents of
-steps that cannot be dry-run.
+would and are identified by position, nothing more (a deliberate trade-off:
+no resume-from-step or stable step addresses — see the README). A bash fence
+without a step marker is a validation error (nothing escapes CI silently);
+use a non-bash fence (```console, ```yaml, …) for display-only snippets.
+Optional `key=value` pairs on the marker are metadata carried into the plan
+verbatim — semantically OPAQUE to this tool, but every KEY must be declared
+in front matter `step_tags:` (a typo like `dry-run=skpi` would otherwise
+silently change what CI runs). One presentation attribute is tool-read:
+`hide=true` excludes a step from BOTH reader artifacts (readonly-guide.md
+and the page) while keeping it in every plan — used for hidden dry-run
+equivalents of steps that cannot be dry-run.
 
 The dry-run convention (pure metadata + the generic `plan --skip` filter):
 
@@ -58,20 +66,34 @@ supported combination, `rules:` constrain later dimensions given earlier ones:
   ci:                    # tested cells (CI matrix); every row is a complete,
     - { infra_provider: base, accelerator: gpu }      # flattened assignment
     - { infra_provider: gke,  accelerator: tpu/v6 }   # of ALL dimensions
+                         # rows may add badge:/workflow: for <!-- badges -->
 
 Derived outputs (the guide content itself is opaque to all of them):
 
   render-md     readonly-guide.md — the COMMITTED GitHub reading artifact:
-                all imports expanded in place, default path shown, non-default
-                `when` regions wrapped in collapsible <details> blocks.
+                imports expanded, default path shown with the DEFAULT CELL'S
+                VALUES SUBSTITUTED (never a raw {{ placeholder }}), and
+                non-default `when` regions wrapped in collapsible <details>
+                blocks whose placeholders take the nearest supported cell's
+                values (coherent with the region's own conditions).
                 Generated, never hand-edited; `validate` fails when stale.
   render-html   ONE interactive page: cascading pickers in dimension order,
                 URL deep-links — for the docs site build
   plan          executable run for one picked assignment — bash script,
-                or structured yaml/json (steps in document order)
+                or structured yaml/json (steps in document order); every
+                step records the source file:line it came from
   matrix        the CI job matrix (from `ci:`, else all supported combos)
-  validate      structural checks + readonly-guide.md freshness (the PR gate)
+  validate      structural checks + readonly-guide.md freshness (the PR
+                gate); --cells prints per-variant step counts. Also emits
+                non-fatal WARNINGs: `when` regions matching no supported
+                combination (dead content), and groups of adjacent `when`
+                blocks where some supported combination matches no branch
+                (a variant silently loses those commands) or several.
   render        debug: project one variant to stdout (never committed)
+
+All diagnostics point at the REAL source file:line, tracked through import
+expansion — an error inside a shared fragment names the fragment, not a
+line number in the invisible expanded document.
 
 `md-only` regions (<!-- md-only -->…<!-- end -->) appear in readonly-guide.md
 but are dropped from the interactive page. `{{ dimension }}` substitutes the
@@ -82,6 +104,7 @@ expansion).
 import argparse
 import itertools
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -95,6 +118,7 @@ RE_WHEN = re.compile(r"^\s*<!--\s*when\s+(.+?)\s*-->\s*$")
 RE_MDONLY = re.compile(r"^\s*<!--\s*md-only\s*-->\s*$")
 RE_END = re.compile(r"^\s*<!--\s*end\s*-->\s*$")
 RE_STEP = re.compile(r"^\s*<!--\s*step\b(.*?)\s*-->\s*$")
+RE_BADGES = re.compile(r"^\s*<!--\s*badges\s*-->\s*$")
 RE_FENCE = re.compile(r"^\s*```(\S*)\s*$")
 RE_SUBST = re.compile(r"\{\{\s*(\w+)\s*\}\}")
 RE_ATTR = re.compile(r'([\w-]+)=("[^"]*"|[^\s]+)')
@@ -102,6 +126,7 @@ RE_IMPORT = re.compile(r"^\s*<!--\s*import\s+(\S+)((?:\s+[\w-]+=(?:\"[^\"]*\"|\S
 RE_HEADING = re.compile(r"^(#{1,6})\s")
 
 MD_ONLY = "__md_only__"
+CI_ROW_META = ("badge", "workflow")  # non-dimension keys allowed on ci: rows
 
 
 def parse_attrs(expr):
@@ -120,17 +145,33 @@ def subst(text, mapping):
     return RE_SUBST.sub(lambda m: str(mapping.get(m.group(1), m.group(0))), text)
 
 
+def display(path):
+    """Path as shown in diagnostics: relative to the CWD when that is shorter."""
+    rel = os.path.relpath(Path(path).resolve())
+    return rel if not rel.startswith("..") else str(Path(path).resolve())
+
+
+def source_pairs(lines, path, start=1):
+    """Attach `file:line` origins to raw lines."""
+    d = display(path)
+    return [(line, f"{d}:{n}") for n, line in enumerate(lines, start)]
+
+
 # ================================================================ front matter
 
 def split_front_matter(text, path):
-    """Front matter is optional: a plain markdown file is a valid guide."""
+    """Front matter is optional: a plain markdown file is a valid guide.
+
+    Returns (meta, body, offset) where offset is how many source lines the
+    front matter occupies, so origins keep pointing at the authored file.
+    """
     m = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
     if not m:
-        return {}, text
+        return {}, text, 0
     meta = yaml.safe_load(m.group(1))
     if not isinstance(meta, dict) or "guide" not in meta:
         sys.exit(f"{path}: front matter must contain a top-level `guide:` key")
-    return meta["guide"], text[m.end():]
+    return meta["guide"], text[m.end():], m.group(0).count("\n")
 
 
 class Matrix:
@@ -179,9 +220,11 @@ class Matrix:
                     errors.append(f"dimension {d}: value {v!r} is not reachable under "
                                   "the rules (dead value)")
 
-        self.ci = []
+        self.ci, self.ci_rows = [], []
         for n, row in enumerate(meta.get("ci") or [], 1):
-            cell = {k: str(v) for k, v in (row or {}).items()}
+            row = dict(row or {})
+            extras = {k: str(row.pop(k)) for k in CI_ROW_META if k in row}
+            cell = {k: str(v) for k, v in row.items()}
             if set(cell) != set(self.dims):
                 missing = set(self.dims) - set(cell)
                 extra = set(cell) - set(self.dims)
@@ -193,6 +236,7 @@ class Matrix:
                 errors.append(f"ci[{n}]: {cell} is not a supported combination")
             else:
                 self.ci.append(cell)
+                self.ci_rows.append({**extras, "cell": cell})
 
     def _enumerate(self):
         out = []
@@ -213,6 +257,20 @@ class Matrix:
             return dict(self.defaults)
         return dict(self.supported[0]) if self.supported else dict(self.defaults)
 
+    def nearest_cell(self, conds):
+        """The supported cell satisfying `conds` that agrees most with the
+        defaults (earlier dimensions win ties), or None if no cell matches.
+        Used to substitute {{ dim }} inside rendered regions with values
+        coherent with the region's own conditions — never an unsupported mix."""
+        best, best_key = None, None
+        for c in self.supported:
+            if not matches(conds, c):
+                continue
+            key = [c[d] == self.defaults.get(d) for d in self.order]
+            if best is None or key > best_key:
+                best, best_key = c, key
+        return dict(best) if best else None
+
 
 # ================================================================ imports
 
@@ -222,6 +280,7 @@ def rebase_headings(text, parent_level):
     The fragment's minimum heading level becomes parent_level + 1; deeper
     headings shift by the same delta (internal hierarchy preserved, clamped
     at h6). Lines inside code fences are never touched. No headings → no-op.
+    Line count is always preserved (origins stay aligned).
     """
     lines = text.splitlines()
     in_fence = False
@@ -252,7 +311,7 @@ def rebase_headings(text, parent_level):
 
 
 def expand_fragment(doc_path, imp_path, attr_str, seen=()):
-    """Fragment text, fully expanded (fragments may import fragments)."""
+    """Fragment (line, origin) pairs, fully expanded (fragments may import)."""
     frag_file = (Path(doc_path).parent / imp_path).resolve()
     if not frag_file.is_file():
         sys.exit(f"{doc_path}: import {imp_path}: file not found")
@@ -261,42 +320,102 @@ def expand_fragment(doc_path, imp_path, attr_str, seen=()):
     text = frag_file.read_text()
     if text.startswith("---\n"):
         sys.exit(f"{imp_path}: fragments must not have front matter")
-    expanded = expand_imports(frag_file, text.splitlines(),
-                              seen=(*seen, frag_file), parent=None)
-    return subst("\n".join(expanded).strip("\n"), parse_attrs(attr_str))
+    pairs = expand_imports(frag_file, source_pairs(text.splitlines(), frag_file),
+                           seen=(*seen, frag_file), parent=None)
+    params = parse_attrs(attr_str)
+    pairs = [(subst(line, params), origin) for line, origin in pairs]
+    while pairs and not pairs[0][0].strip():
+        pairs.pop(0)
+    while pairs and not pairs[-1][0].strip():
+        pairs.pop()
+    return pairs
 
 
-def expand_imports(doc_path, lines, seen=(), parent=1):
+def expand_imports(doc_path, pairs, seen=(), parent=1):
     """Replace every single-line import directive with its fragment content.
 
-    Fragment headings are re-based against the nearest heading above the
-    import point (`parent=None`: unknown until a heading is seen — imports
-    before any heading are inlined as authored).
+    Operates on (line, origin) pairs so every expanded line remembers the
+    real file:line it came from. Fragment headings are re-based against the
+    nearest heading above the import point (`parent=None`: unknown until a
+    heading is seen — imports before any heading are inlined as authored).
     """
     out, in_fence = [], False
-    for line in lines:
+    for line, origin in pairs:
         if RE_FENCE.match(line):
             in_fence = not in_fence
         elif not in_fence and RE_HEADING.match(line):
             parent = len(RE_HEADING.match(line).group(1))
         m = RE_IMPORT.match(line) if not in_fence else None
         if not m:
-            out.append(line)
+            out.append((line, origin))
             continue
         frag = expand_fragment(doc_path, m.group(1), m.group(2), seen=seen)
-        if parent is not None:
-            frag = rebase_headings(frag, parent)
-        out.extend(frag.splitlines())
+        if parent is not None and frag:
+            rebased = rebase_headings("\n".join(l for l, _ in frag), parent)
+            frag = list(zip(rebased.split("\n"), (o for _, o in frag)))
+        out.extend(frag)
+    return out
+
+
+# ================================================================ badges
+
+def badge_lines(matrix, repo):
+    """One markdown badge per ci: row that declares a workflow."""
+    out = []
+    for row in matrix.ci_rows:
+        wf = row.get("workflow")
+        if not wf:
+            continue
+        label = row.get("badge") or " ".join(row["cell"][d] for d in matrix.order)
+        base = f"https://github.com/{repo}/actions/workflows/{wf}"
+        out.append(f"[![{label}]({base}/badge.svg)]({base})")
+    return out
+
+
+def expand_badges(pairs, matrix, repo, errors):
+    """Replace <!-- badges --> with the badge block derived from ci: rows."""
+    out, in_fence = [], False
+    for line, origin in pairs:
+        if RE_FENCE.match(line):
+            in_fence = not in_fence
+        if in_fence or not RE_BADGES.match(line):
+            out.append((line, origin))
+            continue
+        if not repo:
+            errors.append(f"{origin}: <!-- badges --> requires `repo:` "
+                          "(e.g. llm-d/llm-d) in front matter")
+            continue
+        out.extend((b, origin) for b in badge_lines(matrix, repo))
     return out
 
 
 # ================================================================ rendered-guide.md
 
 def wrap_alternatives(lines, matrix):
-    """Wrap when-regions not visible at the default cell in <details>."""
+    """Fold non-default when-regions into <details> and substitute {{ dim }}.
+
+    Every line is substituted against the supported cell nearest the
+    defaults that satisfies the enclosing `when` conditions: the default
+    path shows the default values, and each Alternative block shows values
+    coherent with its own conditions — the committed GitHub copy never
+    contains a raw {{ placeholder }} or an unsupported value mix.
+    """
     default = matrix.default_cell()
-    out, stack = [], []
+    out, stack = [], []          # stack: (conds, is_alternative)
     in_fence = False
+    cell = dict(default)
+
+    def recompute():
+        merged = {}
+        for conds, _ in stack:
+            for k, v in conds.items():
+                if k == MD_ONLY:
+                    continue
+                merged[k] = [x for x in v if x in merged.get(k, v)]
+        if not merged:
+            return dict(default)
+        return matrix.nearest_cell(merged) or dict(default)
+
     for line in lines:
         if RE_FENCE.match(line):
             in_fence = not in_fence
@@ -307,7 +426,8 @@ def wrap_alternatives(lines, matrix):
             if m:
                 conds = parse_conds(m.group(1))
                 alt = not matches(conds, default)
-                stack.append(alt)
+                stack.append((conds, alt))
+                cell = recompute()
                 out.append(line)
                 if alt:
                     label = ", ".join(
@@ -317,53 +437,57 @@ def wrap_alternatives(lines, matrix):
                     out.append("")
                 continue
             if RE_MDONLY.match(line):
-                stack.append(False)
+                stack.append(({}, False))
                 out.append(line)
                 continue
             if RE_END.match(line):
-                if stack and stack.pop():
+                if stack and stack.pop()[1]:
                     if out and out[-1].strip():
                         out.append("")
                     out.append("</details>")
+                cell = recompute()
                 out.append(line)
                 continue
-        out.append(line)
+        out.append(subst(line, cell))
     return out
 
 
-def strip_hidden(lines):
+def strip_hidden(pairs):
     """Drop hide=true step markers and their bash fences from reader output."""
     out, i = [], 0
-    while i < len(lines):
-        m = RE_STEP.match(lines[i])
+    while i < len(pairs):
+        m = RE_STEP.match(pairs[i][0])
         if m and parse_attrs(m.group(1)).get("hide") == "true":
             i += 1
-            while i < len(lines) and not lines[i].strip():
+            while i < len(pairs) and not pairs[i][0].strip():
                 i += 1
-            if i < len(lines) and RE_FENCE.match(lines[i]):
+            if i < len(pairs) and RE_FENCE.match(pairs[i][0]):
                 i += 1
-                while i < len(lines) and not RE_FENCE.match(lines[i]):
+                while i < len(pairs) and not RE_FENCE.match(pairs[i][0]):
                     i += 1
                 i += 1  # closing fence
             continue
-        out.append(lines[i])
+        out.append(pairs[i])
         i += 1
     return out
 
 
 def render_github(path):
-    """The committed GitHub artifact: imports expanded, alternatives folded."""
+    """The committed GitHub artifact: imports expanded, defaults substituted,
+    alternatives folded."""
     text = Path(path).read_text()
-    meta, body = split_front_matter(text, path)
+    meta, body, offset = split_front_matter(text, path)
     errors = []
     matrix = Matrix(meta, errors)
+    pairs = source_pairs(body.splitlines(), path, offset + 1)
+    pairs = expand_imports(path, pairs)
+    pairs = expand_badges(pairs, matrix, meta.get("repo"), errors)
     if errors:
         for e in errors:
             print(f"ERROR: {path}: {e}", file=sys.stderr)
         sys.exit(1)
-    lines = expand_imports(path, body.splitlines())
-    lines = strip_hidden(lines)
-    lines = wrap_alternatives(lines, matrix)
+    pairs = strip_hidden(pairs)
+    lines = wrap_alternatives([l for l, _ in pairs], matrix)
     banner = (f"<!-- GENERATED FILE — DO NOT EDIT."
               f" Source: {Path(path).name}; regenerate with:"
               f" guidemd.py render-md {Path(path).name} -->")
@@ -379,21 +503,29 @@ def rendered_path(doc):
 class Guide:
     """Parsed guide: matrix + chunks (imports expanded in memory).
 
-    A chunk is {'md': str, 'conds': {dim: [values]}, 'step': None | {...}}.
-    Contiguous prose under identical conditions merges into one chunk; every
-    marked bash fence is its own step chunk. Document order is execution
-    order.
+    A chunk is {'md': str, 'conds': {dim: [values]}, 'step': None | {...},
+    'src': 'file:line'}. Contiguous prose under identical conditions merges
+    into one chunk; every marked bash fence is its own step chunk. Document
+    order is execution order.
+
+    `errors` are fatal (validate exits non-zero); `warnings` are advisory
+    (dead regions, non-exhaustive when-groups) and never fail the build.
     """
 
     def __init__(self, path):
         self.path = Path(path)
         text = self.path.read_text()
-        self.meta, body = split_front_matter(text, path)
+        self.meta, body, offset = split_front_matter(text, path)
         self.meta.setdefault("name", self.path.stem)
-        self.errors = []
+        self.errors, self.warnings = [], []
         self.matrix = Matrix(self.meta, self.errors)
+        pairs = expand_imports(self.path,
+                               source_pairs(body.splitlines(), self.path, offset + 1))
+        pairs = expand_badges(pairs, self.matrix, self.meta.get("repo"), self.errors)
         self.chunks = []
-        self._parse(expand_imports(self.path, body.splitlines()))
+        self._parse(pairs)
+        self._check_step_tags()
+        self._check_regions(pairs)
         bad_refs = {r for c in self.chunks for r in RE_SUBST.findall(c["md"])
                     if r not in self.matrix.dims}
         for r in sorted(bad_refs):
@@ -412,28 +544,29 @@ class Guide:
         if last and last["step"] is None and last["conds"] == conds:
             last["md"] += "\n" + line
         else:
-            self.chunks.append({"md": line, "conds": conds, "step": None})
+            self.chunks.append({"md": line, "conds": conds, "step": None, "src": None})
 
-    def _parse(self, lines):
+    def _parse(self, pairs):
         dims = self.matrix.dims
         self._unmarked = []
-        stack, pending = [], None
+        stack, pending = [], None   # pending: (attrs, origin) of an open step marker
         in_fence = fence_is_step = False
         fence_body = []
 
-        for lineno, line in enumerate(lines, 1):
+        for line, origin in pairs:
             fence = RE_FENCE.match(line)
             if in_fence:
                 if fence and not fence.group(1):
                     in_fence = False
                     if fence_is_step:
-                        attrs = pending or {}
+                        attrs, marker_origin = pending
                         self.chunks.append({
                             "md": "```bash\n" + "\n".join(fence_body) + "\n```",
                             "conds": self._flatten(stack),
                             "step": {"hidden": attrs.get("hide") == "true",
                                      "meta": {k: v for k, v in attrs.items()
                                               if k != "hide"}},
+                            "src": marker_origin,
                         })
                         pending = None
                     else:
@@ -449,9 +582,9 @@ class Guide:
                 conds = parse_conds(m.group(1))
                 for k, vals in conds.items():
                     if k not in dims:
-                        self.errors.append(f"line {lineno}: unknown dimension {k!r}")
+                        self.errors.append(f"{origin}: unknown dimension {k!r}")
                     elif not set(vals) <= set(self.matrix.values[k]):
-                        self.errors.append(f"line {lineno}: undeclared value in {k}={vals}")
+                        self.errors.append(f"{origin}: undeclared value in {k}={vals}")
                 stack.append(conds)
                 continue
             if RE_MDONLY.match(line):
@@ -459,40 +592,165 @@ class Guide:
                 continue
             if RE_END.match(line):
                 if not stack:
-                    self.errors.append(f"line {lineno}: <!-- end --> without an open block")
+                    self.errors.append(f"{origin}: <!-- end --> without an open block")
                 else:
                     stack.pop()
                 continue
             m = RE_STEP.match(line)
             if m:
-                pending = parse_attrs(m.group(1))
+                pending = (parse_attrs(m.group(1)), origin)
                 continue
             if fence:
                 in_fence = True
                 fence_is_step = fence.group(1) == "bash" and pending is not None
                 fence_body = []
                 if fence.group(1) == "bash" and pending is None:
-                    self._unmarked.append(lineno)
+                    self._unmarked.append(origin)
                 if not fence_is_step:
-                    if pending:
+                    if pending is not None:
                         self.errors.append(
-                            f"line {lineno}: <!-- step --> must precede a ```bash fence")
+                            f"{pending[1]}: <!-- step --> must precede a ```bash fence")
                         pending = None
                     self._emit_md(line, self._flatten(stack))
                 continue
-            if pending and line.strip():
-                self.errors.append(f"line {lineno}: <!-- step --> must precede a ```bash fence")
+            if pending is not None and line.strip():
+                self.errors.append(
+                    f"{pending[1]}: <!-- step --> must precede a ```bash fence")
                 pending = None
             self._emit_md(line, self._flatten(stack))
 
         if stack:
             self.errors.append("unclosed <!-- when --> / <!-- md-only --> block at end of file")
         if any(c["step"] for c in self.chunks):
-            for lineno in self._unmarked:
+            for origin in self._unmarked:
                 self.errors.append(
-                    f"line {lineno}: bash fence without a <!-- step --> marker "
+                    f"{origin}: bash fence without a <!-- step --> marker "
                     "(unreachable by CI; use a non-bash fence for display-only snippets)")
         # zero step markers = plain / not-yet-annotated guide: bash fences allowed
+
+    def _check_step_tags(self):
+        """Every step metadata KEY must be declared in front matter step_tags."""
+        declared = {str(t) for t in (self.meta.get("step_tags") or [])}
+        for c in self.chunks:
+            if not c["step"]:
+                continue
+            for k in c["step"]["meta"]:
+                if k in declared:
+                    continue
+                hint = (f"not one of the declared step_tags {sorted(declared)}"
+                        if declared else
+                        "declare the allowed keys in front matter `step_tags:` first")
+                self.errors.append(
+                    f"{c['src']}: step metadata key {k!r} — {hint} "
+                    "(an undeclared key would silently change what CI runs)")
+
+    def _check_regions(self, pairs):
+        """Advisory analysis of `when` regions over the supported set.
+
+        - A region no supported combination can enter is dead content.
+        - For a GROUP of adjacent sibling `when` blocks (only blank lines
+          between them), every supported combination in scope should match
+          exactly one branch; a combination matching none silently loses
+          those commands (the add-a-value-later trap), several is ambiguity.
+        Both are warnings — overlapping annotations can be intentional.
+        """
+        stack, regions = [], []
+        in_fence = False
+        for idx, (line, _origin) in enumerate(pairs):
+            if RE_FENCE.match(line):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            m = RE_WHEN.match(line)
+            if m:
+                stack.append({"conds": parse_conds(m.group(1)), "start": idx,
+                              "origin": pairs[idx][1],
+                              "parent": stack[-1] if stack else None,
+                              "md_only": False})
+                continue
+            if RE_MDONLY.match(line):
+                stack.append({"conds": {}, "start": idx, "origin": pairs[idx][1],
+                              "parent": stack[-1] if stack else None, "md_only": True})
+                continue
+            if RE_END.match(line) and stack:
+                r = stack.pop()
+                r["end"] = idx
+                if not r["md_only"]:
+                    regions.append(r)
+        regions.sort(key=lambda r: r["start"])
+        known = [r for r in regions
+                 if all(k in self.matrix.dims and set(v) <= set(self.matrix.values[k])
+                        for k, v in r["conds"].items())]
+        sup = self.matrix.supported
+
+        def merged_conds(region):
+            conds, node = {}, region
+            while node:
+                for k, v in node["conds"].items():
+                    conds[k] = [x for x in v if x in conds.get(k, v)]
+                node = node["parent"]
+            return conds
+
+        for r in known:
+            if sup and not any(matches(merged_conds(r), c) for c in sup):
+                self.warnings.append(f"{r['origin']}: `when` region matches no "
+                                     "supported combination (dead content)")
+
+        runs, cur = [], []
+        for r in known:
+            adjacent = (cur and r["parent"] is cur[-1]["parent"]
+                        and all(not pairs[i][0].strip()
+                                for i in range(cur[-1]["end"] + 1, r["start"])))
+            if adjacent:
+                cur.append(r)
+            else:
+                if len(cur) > 1:
+                    runs.append(cur)
+                cur = [r]
+        if len(cur) > 1:
+            runs.append(cur)
+
+        # Branches of one logical switch share dimensions; independent
+        # annotations that merely sit next to each other don't. Split each
+        # adjacent run into connected components by shared condition keys,
+        # so a monitoring on/off pair next to a router-mode pair is two
+        # 2-branch switches, not one 4-branch one.
+        groups = []
+        for run in runs:
+            comps = []  # (dimension keys, member regions)
+            for r in run:
+                keys, members = set(r["conds"]), [r]
+                remaining = []
+                for ck, cm in comps:
+                    if ck & keys:
+                        keys |= ck
+                        members = cm + members
+                    else:
+                        remaining.append((ck, cm))
+                comps = remaining + [(keys, members)]
+            groups.extend(m for _, m in comps if len(m) > 1)
+
+        for grp in groups:
+            scope = merged_conds(grp[0]["parent"]) if grp[0]["parent"] else {}
+            dims_shown = sorted({k for r in grp for k in r["conds"]})
+            gaps, overlaps = [], []
+            for cell in sup:
+                if not matches(scope, cell):
+                    continue
+                n = sum(1 for r in grp if matches(r["conds"], cell))
+                if n == 0:
+                    gaps.append(cell)
+                elif n > 1:
+                    overlaps.append(cell)
+            for kind, cells in (("no branch", gaps), ("more than one branch", overlaps)):
+                if cells:
+                    example = ", ".join(f"{k}={cells[0][k]}" for k in dims_shown)
+                    self.warnings.append(
+                        f"{grp[0]['origin']}: {len(cells)} supported combination(s) "
+                        f"match {kind} of this {len(grp)}-branch `when` group "
+                        f"(e.g. {example}) — those variants silently "
+                        f"{'lose these commands' if kind == 'no branch' else 'run duplicates'}")
 
     # ------------------------------------------------------------ outputs
 
@@ -528,7 +786,7 @@ class Guide:
             if any(s["meta"].get(k) == v for k, v in (skips or [])):
                 continue
             run = re.sub(r"^```bash\n|\n```$", "", subst(c["md"], cell))
-            steps.append({"run": run, "meta": s["meta"]})
+            steps.append({"run": run, "meta": s["meta"], "src": c["src"]})
         return {"guide": self.meta["name"], "doc": str(self.path),
                 "assignment": dict(cell), "steps": steps}
 
@@ -541,7 +799,8 @@ def plan_bash(plan):
     for n, s in enumerate(plan["steps"], 1):
         meta = ("  [" + " ".join(f"{k}={v}" for k, v in s["meta"].items()) + "]"
                 if s["meta"] else "")
-        lines += ["", f"# --- step {n}/{len(plan['steps'])}{meta} ---", s["run"]]
+        src = f"  ({s['src']})" if s.get("src") else ""
+        lines += ["", f"# --- step {n}/{len(plan['steps'])}{meta}{src} ---", s["run"]]
     return "\n".join(lines) + "\n"
 
 
@@ -556,6 +815,7 @@ def plan_yaml(plan):
     LiteralDumper.add_representer(str, _str)
     doc = {"guide": plan["guide"], "assignment": plan["assignment"],
            "steps": [{**({"meta": s["meta"]} if s["meta"] else {}),
+                      **({"src": s["src"]} if s.get("src") else {}),
                       "run": s["run"] + "\n"} for s in plan["steps"]]}
     return yaml.dump(doc, Dumper=LiteralDumper, sort_keys=False, width=100)
 
@@ -597,6 +857,9 @@ HTML_PAGE = """<!DOCTYPE html>
   .step { border-left: 3px solid var(--accent); padding-left: 1rem; margin: 1rem 0; }
   .step-head { font-size: 0.72rem; color: var(--muted); display: flex; gap: 0.6rem;
                align-items: baseline; }
+  #tested-badge { font-size: 0.8rem; }
+  #tested-badge .yes { color: #15803d; }
+  #tested-badge .no { color: #b45309; }
 </style>
 </head>
 <body>
@@ -640,6 +903,9 @@ ORDER.forEach((dim, k) => {
   header.appendChild(wrap);
   selects[dim] = sel;
 });
+const tested = document.createElement('div');
+tested.id = 'tested-badge';
+header.appendChild(tested);
 const badge = document.createElement('div');
 badge.id = 'cell-badge';
 header.appendChild(badge);
@@ -697,6 +963,10 @@ function show(cell, updateUrl = true) {
     if (window.marked) shells[i].body.innerHTML = marked.parse(md);
     else { shells[i].body.textContent = md; shells[i].body.style.whiteSpace = 'pre-wrap'; }
   });
+  const isTested = GUIDE.ci.some(c => ORDER.every(d => c[d] === cell[d]));
+  tested.innerHTML = isTested
+    ? '<span class="yes">✓ CI-tested configuration</span>'
+    : '<span class="no">⚠ supported, not CI-tested</span>';
   badge.innerHTML = 'variant: <code>' +
     ORDER.map(d => cell[d].replace('/', '')).join('-') + '</code>';
   if (updateUrl) history.replaceState(null, '', '?' + new URLSearchParams(cell));
@@ -723,6 +993,7 @@ def render_html(guide):
                        for d, s in guide.matrix.dims.items()},
         "defaults": guide.matrix.defaults,
         "supported": guide.matrix.supported,
+        "ci": guide.matrix.ci,
         "chunks": [{"md": c["md"], "conds": c["conds"], "step": c["step"]}
                    for c in guide.chunks
                    if MD_ONLY not in c["conds"]
@@ -737,6 +1008,8 @@ def render_html(guide):
 
 def load(path):
     g = Guide(path)
+    for w in g.warnings:
+        print(f"WARNING: {path}: {w}", file=sys.stderr)
     if g.errors:
         for e in g.errors:
             print(f"ERROR: {path}: {e}", file=sys.stderr)
@@ -752,6 +1025,8 @@ def main():
         p = sub.add_parser(name)
         p.add_argument("docs", nargs="+")
     sub.choices["matrix"].add_argument("--github", action="store_true")
+    sub.choices["validate"].add_argument("--cells", action="store_true",
+                                         help="print per-variant step counts")
     sub.choices["render-md"].add_argument("--check", action="store_true",
                                           help="exit non-zero if readonly-guide.md is stale")
     for name in ("render", "plan", "render-html"):
@@ -797,6 +1072,12 @@ def main():
             n = sum(1 for c in g.chunks if c["step"])
             print(f"OK: {doc} — {len(g.matrix.supported)} supported combinations, "
                   f"{len(g.matrix.ci)} ci cells, {n} steps")
+            if args.cells:
+                for cell in g.matrix.supported:
+                    count = len(g.plan(cell)["steps"])
+                    mark = "  [ci]" if cell in g.matrix.ci else ""
+                    dims = " ".join(f"{k}={v}" for k, v in cell.items())
+                    print(f"  {count:3d} steps  {dims}{mark}")
         if failed:
             sys.exit(1)
     elif args.cmd == "matrix":
@@ -825,9 +1106,13 @@ def main():
         sys.stdout.write(g.render_markdown(g.parse_assignment(args.set)))
     elif args.cmd == "plan":
         g = load(args.docs[0])
+        declared = {str(t) for t in (g.meta.get("step_tags") or [])}
         skips = []
         for item in args.skip or []:
             k, _, v = item.partition("=")
+            if declared and k not in declared:
+                sys.exit(f"--skip {item!r}: {k!r} is not a declared step tag "
+                         f"{sorted(declared)}")
             skips.append((k, v))
         plan = g.plan(g.parse_assignment(args.set), skips=skips)
         if args.format == "json":

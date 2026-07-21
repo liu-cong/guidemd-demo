@@ -1,12 +1,14 @@
 <!-- GENERATED FILE — DO NOT EDIT. Source: guide.template.md; regenerate with: guidemd.py render-md guide.template.md -->
 # Optimized Baseline
 
-[![E2E (AMD ROCM)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-amd-acc-rocm-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-amd-acc-rocm-vllm-x.yaml)
-[![E2E (CKS GPU)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-cks-acc-gpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-cks-acc-gpu-vllm-x.yaml)
+[![E2E (base GPU vLLM)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-acc-gpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-acc-gpu-vllm-x.yaml)
+[![E2E (base GPU monitoring)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-acc-gpu-vllm-mon-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-acc-gpu-vllm-mon-x.yaml)
+[![E2E (base GPU gateway)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-gw-istio-acc-gpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-gw-istio-acc-gpu-vllm-x.yaml)
 [![E2E (GKE GPU)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-gke-acc-gpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-gke-acc-gpu-vllm-x.yaml)
-[![E2E (GKE TPU)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-gke-acc-tpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-gke-acc-tpu-vllm-x.yaml)
-[![E2E (OCP GPU)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-ibm-acc-gpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-ibm-acc-gpu-vllm-x.yaml)
+[![E2E (GKE TPU v6e)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-gke-acc-tpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-gke-acc-tpu-vllm-x.yaml)
+[![E2E (AMD ROCm)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-amd-acc-rocm-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-amd-acc-rocm-vllm-x.yaml)
 [![E2E (Intel XPU)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-intel-acc-xpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-intel-acc-xpu-vllm-x.yaml)
+[![E2E (base GPU SGLang)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-acc-gpu-sglang-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-acc-gpu-sglang-x.yaml)
 
 <!-- md-only -->
 > [!TIP]
@@ -95,7 +97,7 @@ git clone https://github.com/llm-d/llm-d.git && cd llm-d && git checkout ${BRANC
 export GUIDE_NAME=optimized-baseline
 export NAMESPACE=llm-d-optimized-baseline
 export HF_TOKEN=HF_TOKEN_PLACEHOLDER
-export MODEL={{ model }}
+export MODEL=Qwen/Qwen3-32B
 export CURL_TEST_IMAGE=cfmanteiga/alpine-bash-curl-jq:latest
 export BENCHMARK_REF=main
 export HARNESS=inference-perf
@@ -127,7 +129,7 @@ kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extens
 
 - Create a target namespace for the installation:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
 ```
@@ -216,20 +218,16 @@ helm install ${GUIDE_NAME} \
 <details><summary><em>Alternative — Router mode: gateway</em></summary>
 
 This uses a Kubernetes Gateway managed proxy rather than the standalone
-router. Set the Gateway provider, then install a Gateway implementation (see
-the [gateway guides](../../docs/infrastructure/gateway) for provider
-specifics) and create the Gateway:
-
-<!-- step -->
-```bash
-export PROVIDER_NAME=gke # options: none, gke, agentgateway, istio
-```
+router, with the **istio** Gateway implementation (your
+pick in the configuration above; see the
+[gateway guides](../../docs/infrastructure/gateway) for provider specifics).
+Install the Gateway:
 
 <!-- step dry-run=skip -->
 ```bash
 helm upgrade -i llm-d-inference-gateway ${REPO_ROOT}/guides/recipes/gateway/ \
   --set gateway.name=llm-d-inference-gateway \
-  --set gateway.class=${PROVIDER_NAME} \
+  --set gateway.class=istio \
   -n ${NAMESPACE}
 ```
 
@@ -250,7 +248,7 @@ helm install ${GUIDE_NAME} \
   ${ROUTER_BASE_VALUES} \
   ${MONITORING_VALUES} \
   ${ROUTER_VALUES} \
-  --set provider.name=${PROVIDER_NAME} \
+  --set provider.name=istio \
   --set httpRoute.create=true \
   --set httpRoute.inferenceGatewayName=llm-d-inference-gateway \
   -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
@@ -267,14 +265,14 @@ kubectl rollout status deployment -l app.kubernetes.io/instance=${GUIDE_NAME} \
   -n ${NAMESPACE} --timeout=300s
 ```
 
-### 2. Deploy the Model Server ({{ accelerator }} / {{ model_server }})
+### 2. Deploy the Model Server (gpu / vllm)
 
 - Select the Kustomize overlay for this configuration:
 
 <!-- when accelerator=gpu model=Qwen/Qwen3-32B -->
 <!-- step -->
 ```bash
-export KUSTOMIZE_DIR=${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/gpu/{{ model_server }}/{{ infra_provider }}/
+export KUSTOMIZE_DIR=${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/gpu/vllm/base/
 ```
 <!-- end -->
 <!-- when model=openai/gpt-oss-120b -->
@@ -292,7 +290,7 @@ export KUSTOMIZE_DIR=${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/gpu/vllm/gpt-
 
 <!-- step -->
 ```bash
-export KUSTOMIZE_DIR=${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/{{ accelerator }}/{{ model_server }}/
+export KUSTOMIZE_DIR=${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/amd/vllm/
 ```
 
 </details>
@@ -392,7 +390,9 @@ export IP=$(kubectl get gateway llm-d-inference-gateway -n ${NAMESPACE} -o jsonp
 ### 2. Send a Test Request
 
 Open a temporary interactive shell inside the cluster and send a completion
-request (model-aware; `MODEL` is set in the environment section above):
+request (model-aware; `MODEL` is set in the environment section above). The
+step **fails with a non-zero exit** unless the router returns an actual
+completion — the same assertion gates the CI e2e run:
 
 <!-- step dry-run=skip -->
 ```bash
@@ -401,7 +401,33 @@ kubectl run curl-test --rm -i --restart=Never \
   --namespace="${NAMESPACE}" \
   --env="IP=${IP}" \
   --env="MODEL=${MODEL}" \
-  -- /bin/sh -c 'curl -sS -X POST "http://${IP}/v1/completions" -H "Content-Type: application/json" -d "{\"model\": \"${MODEL}\", \"prompt\": \"How are you today?\"}"'
+  -- /bin/sh -c 'RESP=$(curl -fsS -X POST "http://${IP}/v1/completions" -H "Content-Type: application/json" -d "{\"model\": \"${MODEL}\", \"prompt\": \"How are you today?\"}") && echo "${RESP}" && echo "${RESP}" | jq -e ".choices[0].text" > /dev/null && echo "verification passed"'
+```
+
+### 3. Debugging interactively (optional)
+
+To poke around by hand instead, open a temporary interactive shell inside
+the cluster (interactive — not part of the executable plan):
+
+```console
+kubectl run curl-debug --rm -it \
+    --image=cfmanteiga/alpine-bash-curl-jq \
+    --namespace="$NAMESPACE" \
+    --env="IP=$IP" \
+    --env="NAMESPACE=$NAMESPACE" \
+    -- /bin/bash
+```
+
+then send a completion request (model-aware; set `model` to the name you
+want to query, e.g. `Qwen/Qwen3-32B` or `openai/gpt-oss-120b`):
+
+```console
+curl -X POST http://${IP}/v1/completions \
+    -H 'Content-Type: application/json' \
+    -d '{
+        "model": "Qwen/Qwen3-32B",
+        "prompt": "How are you today?"
+    }' | jq
 ```
 
 ## Benchmarking
@@ -430,7 +456,7 @@ finished.
 > there when something goes wrong. For even more details see
 > [`llm-d-benchmark` on GitHub](https://github.com/llm-d/llm-d-benchmark).
 
-### 1. Install the CLI
+### 1. Install the `llmdbenchmark` CLI
 
 Automatically clone the benchmark repository into `./llm-d-benchmark/` and
 create a virtualenv at `./llm-d-benchmark/.venv/` containing dependencies:
@@ -492,11 +518,11 @@ export GATEWAY_CLASS="epponly"
 <!-- when router_mode=gateway -->
 <details><summary><em>Alternative — Router mode: gateway</em></summary>
 
-Match the provider you used when deploying the gateway:
+This matches the provider you picked when deploying the gateway:
 
 <!-- step -->
 ```bash
-export GATEWAY_CLASS="${PROVIDER_NAME}"
+export GATEWAY_CLASS="istio"
 ```
 
 </details>
@@ -561,7 +587,7 @@ kubectl delete -n ${NAMESPACE} -k ${REPO_ROOT}/guides/recipes/modelserver/compon
 
 - Delete the namespace:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl delete namespace ${NAMESPACE}
 ```

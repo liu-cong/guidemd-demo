@@ -23,7 +23,7 @@ kubectl delete -n ${NAMESPACE} -k ${REPO_ROOT}/guides/recipes/modelserver/compon
 
 - Delete the namespace:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl delete namespace ${NAMESPACE}
 ```

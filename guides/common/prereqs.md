@@ -52,9 +52,14 @@ curl -sfL https://github.com/kubernetes-sigs/gateway-api-inference-extension/rel
 
 - Create a target namespace for the installation:
 
-<!-- step -->
+<!-- step dry-run=skip -->
 ```bash
 kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+```
+
+<!-- step e2e=skip hide=true -->
+```bash
+kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml > /dev/null
 ```
 
 - [Create the `llm-d-hf-token` secret in your target namespace with the key `HF_TOKEN` matching a valid HuggingFace token](../../helpers/hf-token.md) to pull models:

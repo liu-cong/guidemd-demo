@@ -2,6 +2,8 @@
 guide:
   name: optimized-baseline
   title: Optimized Baseline
+  repo: llm-d/llm-d          # for <!-- badges --> links
+  step_tags: [ci, dry-run, e2e]   # the only metadata keys steps may use
   # Declaration order = pick order. The options available for each dimension
   # are narrowed by the picks above it (see rules). First value = default.
   dimensions:
@@ -11,6 +13,9 @@ guide:
     router_mode:
       label: Router mode
       values: [standalone, gateway]
+    gateway_provider:
+      label: Gateway provider
+      values: [none, gke, istio, agentgateway]
     accelerator:
       label: Accelerator
       values: [gpu, amd, xpu, hpu, tpu/v6, tpu/v7, cpu]
@@ -30,31 +35,41 @@ guide:
       allow: { accelerator: [gpu, amd, xpu, hpu, cpu] }
     - when:  { infra_provider: gke }
       allow: { accelerator: [gpu, tpu/v6, tpu/v7] }
+    - when:  { router_mode: standalone }
+      allow: { gateway_provider: [none] }
+    - when:  { router_mode: gateway }
+      allow: { gateway_provider: [gke, istio, agentgateway] }
+    - when:  { infra_provider: base }
+      allow: { gateway_provider: [none, istio, agentgateway] }
     - when:  { accelerator: [amd, xpu, hpu, tpu/v6, tpu/v7, cpu] }
       allow: { model_server: [vllm], model: [Qwen/Qwen3-32B] }
     - when:  { model_server: [sglang, trtllm] }
       allow: { model: [Qwen/Qwen3-32B] }
-  # The tested matrix (mirrors the E2E badges). Every row is a complete,
-  # flattened assignment of ALL dimensions — what you read is what CI runs.
+  # The tested matrix. Every row is a complete, flattened assignment of ALL
+  # dimensions — what you read is what CI runs. badge/workflow feed the
+  # <!-- badges --> block, so the badges can never drift from this list.
   ci:
-    - { infra_provider: base, router_mode: standalone, accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off" }
-    - { infra_provider: base, router_mode: standalone, accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "on"  }
-    - { infra_provider: base, router_mode: gateway,    accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off" }
-    - { infra_provider: gke,  router_mode: standalone, accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off" }
-    - { infra_provider: gke,  router_mode: standalone, accelerator: tpu/v6, model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off" }
-    - { infra_provider: base, router_mode: standalone, accelerator: amd,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off" }
-    - { infra_provider: base, router_mode: standalone, accelerator: xpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off" }
-    - { infra_provider: base, router_mode: standalone, accelerator: gpu,    model_server: sglang, model: Qwen/Qwen3-32B, monitoring: "off" }
+    - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
+        badge: E2E (base GPU vLLM),        workflow: consolidate-status-optimized-baseline-base-acc-gpu-vllm-x.yaml }
+    - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "on",
+        badge: E2E (base GPU monitoring),  workflow: consolidate-status-optimized-baseline-base-acc-gpu-vllm-mon-x.yaml }
+    - { infra_provider: base, router_mode: gateway,    gateway_provider: istio, accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
+        badge: E2E (base GPU gateway),     workflow: consolidate-status-optimized-baseline-base-gw-istio-acc-gpu-vllm-x.yaml }
+    - { infra_provider: gke,  router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
+        badge: E2E (GKE GPU),              workflow: consolidate-status-optimized-baseline-gke-acc-gpu-vllm-x.yaml }
+    - { infra_provider: gke,  router_mode: standalone, gateway_provider: none,  accelerator: tpu/v6, model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
+        badge: E2E (GKE TPU v6e),          workflow: consolidate-status-optimized-baseline-gke-acc-tpu-vllm-x.yaml }
+    - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: amd,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
+        badge: E2E (AMD ROCm),             workflow: consolidate-status-optimized-baseline-amd-acc-rocm-vllm-x.yaml }
+    - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: xpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
+        badge: E2E (Intel XPU),            workflow: consolidate-status-optimized-baseline-intel-acc-xpu-vllm-x.yaml }
+    - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: sglang, model: Qwen/Qwen3-32B, monitoring: "off",
+        badge: E2E (base GPU SGLang),      workflow: consolidate-status-optimized-baseline-base-acc-gpu-sglang-x.yaml }
 ---
 
 # Optimized Baseline
 
-[![E2E (AMD ROCM)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-amd-acc-rocm-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-amd-acc-rocm-vllm-x.yaml)
-[![E2E (CKS GPU)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-cks-acc-gpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-cks-acc-gpu-vllm-x.yaml)
-[![E2E (GKE GPU)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-gke-acc-gpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-gke-acc-gpu-vllm-x.yaml)
-[![E2E (GKE TPU)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-gke-acc-tpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-gke-acc-tpu-vllm-x.yaml)
-[![E2E (OCP GPU)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-ibm-acc-gpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-ibm-acc-gpu-vllm-x.yaml)
-[![E2E (Intel XPU)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-intel-acc-xpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-intel-acc-xpu-vllm-x.yaml)
+<!-- badges -->
 
 <!-- md-only -->
 > [!TIP]
@@ -209,7 +224,7 @@ under `guides/` — and which ones still need a calibration run — see the
 
 ## Verification
 
-<!-- import ../common/verify.md -->
+<!-- import ../common/verify.md gateway_name=llm-d-inference-gateway -->
 
 ## Benchmarking
 
@@ -224,7 +239,7 @@ under `guides/` — and which ones still need a calibration run — see the
 > `shared_prefix_synthetic.yaml` from the catalog in
 > [`helpers/benchmark.md`](../../helpers/benchmark.md#available-workload-profiles).
 
-<!-- import ../common/benchmark.md -->
+<!-- import ../common/benchmark.md gateway_name=llm-d-inference-gateway -->
 
 ## Cleanup
 

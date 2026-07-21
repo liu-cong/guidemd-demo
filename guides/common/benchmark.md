@@ -11,7 +11,7 @@ finished.
 > there when something goes wrong. For even more details see
 > [`llm-d-benchmark` on GitHub](https://github.com/llm-d/llm-d-benchmark).
 
-### 1. Install the CLI
+### 1. Install the `llmdbenchmark` CLI
 
 Automatically clone the benchmark repository into `./llm-d-benchmark/` and
 create a virtualenv at `./llm-d-benchmark/.venv/` containing dependencies:
@@ -38,7 +38,7 @@ llmdbenchmark --version
 Get the proxy IP, then set the endpoint URL and the gateway class (which
 tells the CLI which deployment topology the cluster is actually running):
 
-<!-- import get-router-ip.md -->
+<!-- import get-router-ip.md gateway_name="{{ gateway_name }}" -->
 
 <!-- step dry-run=skip -->
 ```bash
@@ -52,11 +52,11 @@ export GATEWAY_CLASS="epponly"
 ```
 <!-- end -->
 <!-- when router_mode=gateway -->
-Match the provider you used when deploying the gateway:
+This matches the provider you picked when deploying the gateway:
 
 <!-- step -->
 ```bash
-export GATEWAY_CLASS="${PROVIDER_NAME}"
+export GATEWAY_CLASS="{{ gateway_provider }}"
 ```
 <!-- end -->
 

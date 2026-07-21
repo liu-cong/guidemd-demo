@@ -2,12 +2,14 @@ guide: optimized-baseline
 assignment:
   infra_provider: gke
   router_mode: standalone
+  gateway_provider: none
   accelerator: tpu/v6
   model_server: vllm
   model: Qwen/Qwen3-32B
   monitoring: 'off'
 steps:
-- run: |
+- src: guides/common/prereqs.md:13
+  run: |
     export GUIDE_NAME=optimized-baseline
     export NAMESPACE=llm-d-optimized-baseline
     export HF_TOKEN=HF_TOKEN_PLACEHOLDER
@@ -16,23 +18,32 @@ steps:
     export BENCHMARK_REF=main
     export HARNESS=inference-perf
     export WORKLOAD=guide_optimized-baseline_1.yaml
-- run: |
+- src: guides/common/prereqs.md:31
+  run: |
     export REPO_ROOT=$(realpath $(git rev-parse --show-toplevel))
     source ${REPO_ROOT}/guides/env.sh
 - meta:
     dry-run: skip
+  src: guides/common/prereqs.md:43
   run: |
     kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/${GAIE_VERSION}/v1-manifests.yaml
-- run: |
+- meta:
+    dry-run: skip
+  src: guides/common/prereqs.md:55
+  run: |
     kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
-- run: |
+- src: guides/optimized-baseline/guide.template.md:153
+  run: |
     export ROUTER_VALUES="-f ${REPO_ROOT}/guides/${GUIDE_NAME}/router/${GUIDE_NAME}.values.yaml"
-- run: |
+- src: guides/common/install-router.md:4
+  run: |
     export ROUTER_BASE_VALUES="-f ${REPO_ROOT}/guides/recipes/router/base.values.yaml"
-- run: |
+- src: guides/common/install-router.md:10
+  run: |
     export MONITORING_VALUES=""
 - meta:
     dry-run: skip
+  src: guides/common/install-router.md:29
   run: |
     helm install ${GUIDE_NAME} \
       ${ROUTER_STANDALONE_CHART} \
@@ -42,52 +53,64 @@ steps:
       -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
 - meta:
     dry-run: skip
+  src: guides/common/install-router.md:110
   run: |
     kubectl rollout status deployment -l app.kubernetes.io/instance=${GUIDE_NAME} \
       -n ${NAMESPACE} --timeout=300s
-- run: |
+- src: guides/optimized-baseline/guide.template.md:188
+  run: |
     export KUSTOMIZE_DIR=${REPO_ROOT}/guides/${GUIDE_NAME}/modelserver/tpu/v6/vllm/
 - meta:
     dry-run: skip
+  src: guides/common/install-modelserver.md:4
   run: |
     kubectl apply -n ${NAMESPACE} -k ${KUSTOMIZE_DIR}
 - meta:
     dry-run: skip
+  src: guides/common/install-modelserver.md:17
   run: |
     kubectl wait --for=condition=Ready pod \
       -l llm-d.ai/inferenceServing=true \
       -n ${NAMESPACE} --timeout=1800s
 - meta:
     dry-run: skip
+  src: guides/common/get-router-ip.md:4
   run: |
     export IP=$(kubectl get service ${GUIDE_NAME}-epp -n ${NAMESPACE} -o jsonpath='{.spec.clusterIP}')
 - meta:
     dry-run: skip
+  src: guides/common/verify.md:12
   run: |
     kubectl run curl-test --rm -i --restart=Never \
       --image=${CURL_TEST_IMAGE} \
       --namespace="${NAMESPACE}" \
       --env="IP=${IP}" \
       --env="MODEL=${MODEL}" \
-      -- /bin/sh -c 'curl -sS -X POST "http://${IP}/v1/completions" -H "Content-Type: application/json" -d "{\"model\": \"${MODEL}\", \"prompt\": \"How are you today?\"}"'
-- run: |
+      -- /bin/sh -c 'RESP=$(curl -fsS -X POST "http://${IP}/v1/completions" -H "Content-Type: application/json" -d "{\"model\": \"${MODEL}\", \"prompt\": \"How are you today?\"}") && echo "${RESP}" && echo "${RESP}" | jq -e ".choices[0].text" > /dev/null && echo "verification passed"'
+- src: guides/common/benchmark.md:19
+  run: |
     curl -sSL https://raw.githubusercontent.com/llm-d/llm-d-benchmark/${BENCHMARK_REF}/install.sh | bash
-- run: |
+- src: guides/common/benchmark.md:24
+  run: |
     cd llm-d-benchmark
     source .venv/bin/activate
     llmdbenchmark --version
 - meta:
     dry-run: skip
+  src: guides/common/get-router-ip.md:4
   run: |
     export IP=$(kubectl get service ${GUIDE_NAME}-epp -n ${NAMESPACE} -o jsonpath='{.spec.clusterIP}')
 - meta:
     dry-run: skip
+  src: guides/common/benchmark.md:43
   run: |
     export ENDPOINT_URL="http://${IP}"
-- run: |
+- src: guides/common/benchmark.md:49
+  run: |
     export GATEWAY_CLASS="epponly"
 - meta:
     dry-run: skip
+  src: guides/common/benchmark.md:70
   run: |
     llmdbenchmark \
       --spec           guides/${GUIDE_NAME} \
@@ -101,11 +124,16 @@ steps:
       --analyze
 - meta:
     dry-run: skip
+  src: guides/common/cleanup.md:3
   run: |
     helm uninstall ${GUIDE_NAME} -n ${NAMESPACE}
 - meta:
     dry-run: skip
+  src: guides/common/cleanup.md:10
   run: |
     kubectl delete -n ${NAMESPACE} -k ${KUSTOMIZE_DIR} --ignore-not-found=true
-- run: |
+- meta:
+    dry-run: skip
+  src: guides/common/cleanup.md:26
+  run: |
     kubectl delete namespace ${NAMESPACE}

@@ -11,6 +11,6 @@ export IP=$(kubectl get service ${GUIDE_NAME}-epp -n ${NAMESPACE} -o jsonpath='{
 
 <!-- step dry-run=skip -->
 ```bash
-export IP=$(kubectl get gateway llm-d-inference-gateway -n ${NAMESPACE} -o jsonpath='{.status.addresses[0].value}')
+export IP=$(kubectl get gateway {{ gateway_name }} -n ${NAMESPACE} -o jsonpath='{.status.addresses[0].value}')
 ```
 <!-- end -->

@@ -34,4 +34,9 @@ kubectl wait --for=condition=Ready pod \
 ```bash
 kubectl apply -n ${NAMESPACE} -k ${REPO_ROOT}/guides/recipes/modelserver/components/monitoring
 ```
+
+<!-- step e2e=skip hide=true -->
+```bash
+kubectl kustomize ${REPO_ROOT}/guides/recipes/modelserver/components/monitoring > /dev/null
+```
 <!-- end -->
