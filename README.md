@@ -27,28 +27,12 @@ tests/            ──▶ compiler test suite (python3 -m unittest discover -s
 **For CI/CD**
 - Automatically **derive an executable, verifiable run** from the guide for
   any supported dimension combination — docs and CI can never drift.
-- Treat the guide's content as **opaque**: CI mimics a human running the
-  steps top to bottom, with no semantic assumptions about what they mean.
 - **Affordable on every PR**: dry-run validation by default; full e2e per
   tested matrix cell on a schedule or on demand.
-- No command can silently escape testing: every published bash block is
-  reachable by CI or explicitly excluded — and every exclusion tag is
-  validated against the guide's declared `step_tags:` (a typo like
-  `dry-run=skpi` is a validation error, not a silent behavior change).
-- The dry-run flavor must be **truly dry**: runnable on every PR with no
-  cluster access at all (enforced by a test over every supported variant).
 
 **For guide writers**
-- **Plain markdown must remain valid** (migration, experiments). Keeping the
-  authoring experience close to plain markdown — the smallest possible syntax
-  on top — is a nice-to-have rather than a hard requirement, but one this
-  design deliberately optimizes for.
-- **Multiple writers** — each owning a dimension (e.g. one team owns GKE) —
-  without stepping on each other's prose.
+- **Plain markdown must remain valid** (for migration, experiments, etc.).
 - Common sections **maintained once**, imported everywhere.
-- Adopting the system must cause **no loss of information** relative to the
-  existing guides (enforced here by an automated coverage check against
-  upstream `optimized-baseline`).
 
 ## Design principles
 
