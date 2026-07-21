@@ -1,0 +1,29 @@
+# Intentional deviations from upstream guides/optimized-baseline — one
+# Python regex per line, matched against the normalized upstream line.
+# Every waiver must still match something upstream (stale waivers fail the
+# check). Keep the reason on the same line after the regex.
+
+^export branch="main"                          # renamed to BRANCH (env-var naming convention)
+^git clone .*\$\{branch\}                      # same clone, via ${BRANCH}
+^export GUIDE_NAME="optimized-baseline"$       # same export, unquoted in the port
+^export HF_TOKEN=<your HuggingFace token>$     # placeholder spelled HF_TOKEN_PLACEHOLDER
+^-f \$\{REPO_ROOT\}/guides/                    # helm -f args carried via ROUTER_BASE_VALUES / ROUTER_VALUES
+^export PROVIDER_NAME=gke                      # became the gateway_provider DIMENSION (rules-gated)
+^--set provider\.name=\$\{PROVIDER_NAME\}      # substituted from the gateway_provider dimension
+^export ACCELERATOR_TYPE=gpu                   # became the accelerator dimension
+^export MODEL_SERVER=vllm                      # became the model_server dimension
+^export INFRA_PROVIDER=base                    # became the infra_provider dimension
+^kubectl (apply|delete) -n \$\{NAMESPACE\} -k \$\{REPO_ROOT\}/guides/\$\{GUIDE_NAME\}/modelserver/  # via the KUSTOMIZE_DIR selection steps
+^curl -sSL https://raw\.githubusercontent\.com/llm-d/llm-d-benchmark/main/install\.sh  # ref pinned via ${BENCHMARK_REF}
+^export ENDPOINT_URL="http://\$\(kubectl       # split into get-router-ip step + ENDPOINT_URL step
+^export GATEWAY_CLASS=epponly                  # same value, quoted in the port
+^export GATEWAY_CLASS=istio                    # substituted from the gateway_provider dimension
+^--spec guides/optimized-baseline              # via --spec guides/${GUIDE_NAME}
+^--model "Qwen/Qwen3-32B"                      # via --model "${MODEL}"
+^--harness inference-perf                      # via ${HARNESS} (set in the environment section)
+^--workload guide_optimized-baseline_1\.yaml   # via ${WORKLOAD} (set in the environment section)
+^standalone mode$                              # heading became bold text inside get-router-ip.md
+^\(optional\) enable monitoring$               # heading became 'Enable monitoring for model servers' (monitoring=on)
+^send test requests$                           # reworded to 'Send a Test Request' (single asserted request)
+^run the benchmark profile for optimized baseline$  # fragment is shared across guides; guide name dropped from heading
+
