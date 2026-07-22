@@ -28,6 +28,21 @@ class StepExtension(Extension):
     tags = {"step"}
 
     def parse(self, parser):
+        """Called by JINJA'S parser when it hits `{% step %}` at template
+        compile time (not at render time).
+
+        Input (template source, say line 27 of install-router.md.j2):
+
+            {% step id="install-router", tags="dry-run=skip" %}
+            helm install ${GUIDE_NAME} ...
+            {% endstep %}
+
+        Output: a Jinja CallBlock node equivalent to calling
+        ``_step(context, src="install-router.md.j2:27",
+        id="install-router", tags="dry-run=skip")`` with the body attached
+        — i.e. provenance is baked in as a constant while parsing, so
+        rendering needs no line tracking at all.
+        """
         lineno = parser.stream.current.lineno
         next(parser.stream)
         src = f"{parser.name or 'guide.md.j2'}:{lineno}"
@@ -43,6 +58,21 @@ class StepExtension(Extension):
 
     def _step(self, context, src, id=None, tags="", group=None, hide=False,
               caller=None):
+        """Called at RENDER time, once per surviving {% step %} block.
+
+        Input: the parse-time constants above plus ``caller()``, which
+        yields the rendered body ("helm install ${GUIDE_NAME} ...").
+
+        Side effect — appends one record to the collector that render()
+        passed in as the ``_steps`` context variable:
+
+            {"id": "install-router", "src": "install-router.md.j2:27",
+             "tags": {"dry-run": "skip"}, "group": None,
+             "run": "helm install ${GUIDE_NAME} ...", "hidden": False}
+
+        Returns the markdown readers see — "```bash\\n<body>\\n```" — or ""
+        when hide=true (the step exists in every plan but not in any doc).
+        """
         run = caller().strip("\n")
         steps = context.get("_steps")
         if steps is not None:
@@ -71,6 +101,18 @@ class Guide:
             trim_blocks=True, lstrip_blocks=True, keep_trailing_newline=True)
 
     def _configure_body(self, cell):
+        """The generated step that carries the picked cell into the shell.
+
+        Input:  {"infra_provider": "gke", ..., "accelerator": "tpu/v6", ...}
+        Output: '# Your configuration (from the picker / --set flags):\\n'
+                'export INFRA_PROVIDER="gke"\\n...\\n'
+                'export ACCELERATOR="tpu/v6"\\n...\\n'
+                '# Guide constants:\\n'
+                'export GUIDE_NAME="optimized-baseline"\\n...'
+
+        This is the ONLY place dimension values become shell state — every
+        authored step body stays static, consuming ${VARS}.
+        """
         lines = ["# Your configuration (from the picker / --set flags):"]
         lines += [f'export {d.upper()}="{cell[d]}"' for d in self.matrix.order]
         if self.env:
@@ -79,10 +121,20 @@ class Guide:
         return "\n".join(lines)
 
     def render(self, cell):
-        """Render the template for one cell.
+        """Render the template for one cell — the single source of BOTH
+        reader output and executable plan.
 
-        Returns (markdown, collected): collected is the ordered list of step
-        records — the plan IS the document order for this cell.
+        Input:  a complete cell, e.g. {"infra_provider": "base", ...,
+                "router_mode": "gateway", "gateway_provider": "istio", ...}
+
+        Output: (markdown, collected)
+          markdown   the full guide for exactly that configuration —
+                     "# Optimized Baseline\\n\\n## Overview\\n..." with only
+                     the surviving branches and ```bash fences
+          collected  the ordered step records appended by {% step %} and
+                     configure_step() during that same render (see
+                     StepExtension._step for the record shape) — the plan
+                     IS the document order for this cell
         """
         collected = []
 
@@ -107,6 +159,17 @@ class Guide:
         return md, collected
 
     def parse_assignment(self, sets):
+        """CLI --set flags -> a complete, validated cell.
+
+        Input:  ["accelerator=tpu/v6", "infra_provider=gke"]   (or None)
+        Output: the default cell overridden by the flags, e.g.
+                {"infra_provider": "gke", "router_mode": "standalone",
+                 "gateway_provider": "none", "accelerator": "tpu/v6", ...}
+
+        Exits with an error for unknown dimensions/values, or when the
+        resulting combination is not supported under the rules (e.g.
+        --set infra_provider=base --set accelerator=tpu/v6).
+        """
         cell = self.matrix.default_cell()
         for item in sets or []:
             k, _, v = item.partition("=")
@@ -120,6 +183,27 @@ class Guide:
         return cell
 
     def plan(self, cell, skips=None):
+        """One cell's executable run: render, keep the recorded steps,
+        drop the ones whose tags match `skips`.
+
+        Input:  cell  = a supported cell (see parse_assignment)
+                skips = [("ci", "skip"), ("dry-run", "skip")]  (or None)
+
+        Output (formatted by plan.py / json.dumps, never executed here):
+
+            {"guide": "optimized-baseline",
+             "doc": "guides/optimized-baseline/guide.md.j2",
+             "assignment": {...cell...},
+             "steps": [{"id": "configure", "src": "<generated:configure>",
+                        "meta": {}, "run": 'export ...'},
+                       {"id": "install-router",
+                        "src": "install-router.md.j2:27",
+                        "meta": {"dry-run": "skip"}, "run": "helm ..."}]}
+
+        A step is dropped when any (key, value) in `skips` matches its
+        tags — so hidden dry-run stand-ins (e2e=skip) survive here and are
+        only excluded from reader output.
+        """
         _, collected = self.render(cell)
         steps = [{"id": s["id"], "src": s["src"], "meta": s["tags"], "run": s["run"]}
                  for s in collected
