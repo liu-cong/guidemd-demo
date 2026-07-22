@@ -62,6 +62,56 @@ Dimension values reach steps as **environment variables** (`${ACCELERATOR}`,
 together with the guide's `env:` constants — bodies stay copy-pasteable
 shell. `{{ }}` substitution inside bodies also works when preferred.
 
+## The user journey
+
+```
+WRITE                 edit guide.md.j2 / guide.yaml / common/*.md.j2
+  │
+PREVIEW & CHECK       ./guidegen.py render <guide> --set accelerator=tpu/v6
+  │                   ./guidegen.py validate <guide>
+  │
+REGENERATE & COMMIT   ./guidegen.py render-md <guide>
+  │                   git add source + readonly-guide.md + variants/
+  │
+PR GATE (CI)          validate  +  cluster-free dry-run per matrix cell
+  │ merge
+  ├── NIGHTLY CI      matrix --github → per cell: e2e plan | bash
+  └── WEBSITE BUILD   emit-docusaurus at the release tag → llm-d.ai
+```
+
+**1. Authoring.** The writer edits exactly one narrative (`guide.md.j2`,
+plus shared partials in `common/`) and one data file (`guide.yaml`). Adding
+a variant-specific command = wrap it in `{% if %}` and write the
+`{% step %}` inline; adding a new dimension value = extend `values:` (and
+`rules:` if constrained). Nothing else is hand-edited — everything below
+is derived.
+
+**2. Rendering the markdown.** While iterating, `render --set …` prints
+any single variant for eyeballing. When the change is ready,
+`render-md` regenerates the committed reading artifacts —
+`readonly-guide.md` (default configuration + the configuration table) and
+`variants/*.md` (one pre-rendered guide per CI-tested cell) — and prunes
+variants whose combination no longer exists. The writer commits source and
+artifacts together; `validate` fails any PR where they'd drift, and also
+re-renders all 96 combinations to check tags, groups, fences, variables
+and `bash -n` on every step body. The website needs no writer action:
+its build runs `emit-docusaurus` against the pinned release tag.
+
+**3. Generating CI.** CI never parses anything — it asks for its work:
+`matrix --github` prints the tested cells as a GitHub Actions matrix, and
+each fan-out job turns its cell into a runnable script:
+
+```bash
+# every PR — cluster-free, no credentials:
+./guidegen.py plan <guide> --set … --skip ci=skip --skip dry-run=skip --format bash | bash
+# nightly — the real deployment, verification asserted:
+./guidegen.py plan <guide> --set … --skip ci=skip --skip e2e=skip    --format bash | bash
+```
+
+The plan is the same render that produced the docs — steps in document
+order, `ci=skip` marking what the workflow provides out-of-band (checkout,
+secrets) — so what CI executes is, by construction, what the reader reads.
+
 ## What the design gives structurally
 
 | concern | mechanism |
