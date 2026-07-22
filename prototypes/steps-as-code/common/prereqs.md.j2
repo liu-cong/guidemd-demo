@@ -1,0 +1,37 @@
+- Have the [proper client tools installed on your local system](../../helpers/client-setup/README.md) to use this guide.
+
+- Checkout the llm-d repo:
+
+{{ step("clone") }}
+
+- Set your configuration — the exports below are generated from your picks
+  above (plus this guide's constants), and every later step consumes them as
+  plain environment variables:
+
+{{ configure_step() }}
+
+> [!NOTE]
+> `HF_TOKEN` must be a [valid HuggingFace token](../../helpers/hf-token.md);
+> replace `HF_TOKEN_PLACEHOLDER` with your real token.
+
+- Source the common guide environment variables:
+
+{{ step("source-env") }}
+
+> [!NOTE]
+> Some environment variables are common amongst guides; inspect the file
+> sourced above so the rest of the guide makes sense.
+
+- Install the Gateway API Inference Extension CRDs:
+
+{{ step("install-crds") }}
+{{ step("crds-check", hide=True) }}
+
+- Create a target namespace for the installation:
+
+{{ step("create-namespace") }}
+{{ step("namespace-check", hide=True) }}
+
+- [Create the `llm-d-hf-token` secret in your target namespace with the key `HF_TOKEN` matching a valid HuggingFace token](../../helpers/hf-token.md) to pull models:
+
+{{ step("create-hf-secret") }}

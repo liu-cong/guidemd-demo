@@ -1,0 +1,162 @@
+# {{ title }}
+
+{{ badges() }}
+
+## Overview
+
+This guide deploys the recommended out of the box
+[configuration](https://github.com/llm-d/llm-d-router/blob/main/docs/architecture.md)
+for most vLLM, SGLang, and TensorRT-LLM deployments, reducing tail latency and
+increasing throughput through load-aware and prefix-cache aware balancing.
+
+The optimized-baseline defaults to two main routing criteria:
+
+- **Prefix-cache aware** using the [prefix cache scorer](https://github.com/llm-d/llm-d-router/tree/main/pkg/epp/framework/plugins/scheduling/scorer/prefix),
+  which scores candidate endpoints by estimating prompt prefix cache reuse on
+  each model server, complemented by the
+  [`no-hit-lru-scorer`](https://github.com/llm-d/llm-d-router/tree/main/pkg/epp/framework/plugins/scheduling/scorer/nohitlru)
+  that spreads cold requests (zero cache hits) evenly across endpoints to
+  balance the "prefill" workload.
+
+- **Load-aware** using both the
+  [kv-cache utilization](https://github.com/llm-d/llm-d-router/tree/main/pkg/epp/framework/plugins/scheduling/scorer/kvcacheutilization)
+  and the [queue size](https://github.com/llm-d/llm-d-router/tree/main/pkg/epp/framework/plugins/scheduling/scorer/queuedepth)
+  scorers.
+
+Both plugins are used with their built-in defaults — no per-deployment tuning
+is required for this guide's reference setup (Qwen3-32B on H100 80&nbsp;GB,
+TP=2). If you deploy a **different model or accelerator**, the
+saturation-aware override gate keys off the `peakPrefillThroughput` of the
+filter, which is hardware- and model-specific; measure your own with the
+shared [calibration recipe](../recipes/router/calibration/README.md) and set
+it on the filter. See
+[Adapting to other hardware](#adapting-to-other-hardware) below.
+
+## Configuration
+
+| Parameter          | Default                                                 | Example                                                           |
+| ------------------ | ------------------------------------------------------- | ----------------------------------------------------------------- |
+| Model              | [Qwen/Qwen3-32B](https://huggingface.co/Qwen/Qwen3-32B) | [openai/gpt-oss-120b](https://huggingface.co/openai/gpt-oss-120b) |
+| Replicas           | 8                                                       | 16                                                                |
+| Tensor Parallelism | 2                                                       | 1                                                                 |
+| GPUs per replica   | 2                                                       | 1                                                                 |
+| Total GPUs         | 16                                                      | 16                                                                |
+
+### Supported Hardware Backends
+
+This guide includes configurations for the following accelerators:
+
+| Backend        | Directory | Notes                                                           |
+| -------------- | --------- | --------------------------------------------------------------- |
+| NVIDIA GPU     | `gpu`     | Default configuration (`infra_provider` options: `base`, `gke`) |
+| AMD GPU        | `amd`     | AMD GPU                                                         |
+| Intel XPU      | `xpu`     | Intel Data Center GPU Max 1550+                                 |
+| Google TPU v6e | `tpu/v6`  | GKE TPU                                                         |
+| Google TPU v7  | `tpu/v7`  | GKE TPU                                                         |
+| CPU            | `cpu`     | Intel/AMD, 64 cores + 64GB RAM per replica                      |
+
+> [!NOTE]
+> Some hardware variants use reduced configurations (fewer replicas, smaller
+> models) to enable CI testing for compatibility and regression checks. These
+> configurations are maintained by their respective hardware vendors and are
+> not guaranteed as production-ready examples. Users deploying on non-default
+> hardware should review and adjust the configurations for their environment.
+
+## Prerequisites
+
+{% include "prereqs.md.j2" %}
+
+## Installation Instructions
+
+### 1. Deploy the llm-d Router
+
+- Define the guide-specific `helm` values file for the `llm-d` router:
+
+{% if model_server in ["vllm", "sglang"] %}
+{{ step("router-values-standard") }}
+
+> [!NOTE]
+> **vLLM and SGLang** share a values file, while **TensorRT-LLM**
+> (`trtllm-serve`) has its own values file.
+{% else %}
+{{ step("router-values-trtllm") }}
+{% endif %}
+
+{% include "install-router.md.j2" %}
+
+### 2. Deploy the Model Server ({{ accelerator }} / {{ model_server }})
+
+- Select the Kustomize overlay for this configuration:
+
+{% if model == "openai/gpt-oss-120b" %}
+{{ step("select-overlay-gptoss") }}
+{% elif accelerator == "gpu" %}
+{{ step("select-overlay-gpu") }}
+{% else %}
+{{ step("select-overlay-other") }}
+{% endif %}
+
+{% include "install-modelserver.md.j2" %}
+
+## Adapting to other hardware
+
+The routing plugins ship with defaults tuned for this guide's reference setup
+(Qwen3-32B on H100 80&nbsp;GB, TP=2), so **no calibration is needed to run the
+guide as written**.
+
+The saturation-aware override gate in the `prefix-cache-affinity-filter` keys
+off the filter's `peakPrefillThroughput` parameter, which is **hardware- and
+model-specific** (the plugin default, `15928`, is the value measured for this
+guide's setup). If you deploy a different model or accelerator, measure your
+own value with the shared calibration recipe and set it on the filter:
+
+```yaml
+# guides/optimized-baseline/router/optimized-baseline.values.yaml
+- type: prefix-cache-affinity-filter
+  parameters:
+    peakPrefillThroughput: <measured value>
+```
+
+The recipe (`calibrate.sh`) runs a short Kubernetes Job that measures true
+prefill throughput against your live deployment and prints the value — it
+does not modify any config. See the recipe's README for full usage:
+
+- [`guides/recipes/router/calibration/README.md`](../recipes/router/calibration/README.md)
+
+For reference values across the (model, accelerator) combinations shipped
+under `guides/` — and which ones still need a calibration run — see the
+[**configuration matrix**](../recipes/router/calibration/configuration-matrix.md).
+
+## Verification
+
+{% include "verify.md.j2" %}
+
+## Benchmarking
+
+> [!TIP]
+> `guide_optimized-baseline_1.yaml` (the `WORKLOAD` set in the environment
+> section) is this guide's **dedicated** benchmark profile — it drives
+> [`inference-perf`](https://github.com/kubernetes-sigs/inference-perf) with a
+> shared-prefix synthetic workload, reproducing the load ladder used to
+> generate the [reports below](#benchmarking-reports) (rates 3 to 60), and
+> takes correspondingly long. To validate the path first (image pulls, PVC
+> binding, etc.), substitute a generic sample profile such as
+> `shared_prefix_synthetic.yaml` from the catalog in
+> [`helpers/benchmark.md`](../../helpers/benchmark.md#available-workload-profiles).
+
+{% include "benchmark.md.j2" %}
+
+## Cleanup
+
+To remove the deployed components:
+
+{% include "cleanup.md.j2" %}
+
+## Benchmarking Reports
+
+Empirical benchmark reports comparing llm-d routing performance against a
+standard Kubernetes Service under identical hardware configurations:
+
+- [Qwen/Qwen3-32B on H100 and SGLang](./benchmark-results/sglang-qwen3-32b-h100/README.md)
+- [Qwen/Qwen3-32B on H100 and vLLM](./benchmark-results/vllm-qwen3-32b-h100/README.md)
+- [openai/gpt-oss-120b on H100 and vLLM](./benchmark-results/vllm-gpt-oss-120b-h100/README.md)

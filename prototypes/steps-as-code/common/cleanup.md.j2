@@ -1,0 +1,17 @@
+- Uninstall the llm-d router:
+
+{{ step("uninstall-router") }}
+
+- Remove the model server resources (same `KUSTOMIZE_DIR` used to install):
+
+{{ step("delete-modelserver") }}
+
+{% if monitoring == "on" %}
+- Remove the monitoring resources:
+
+{{ step("delete-monitoring") }}
+
+{% endif %}
+- Delete the namespace:
+
+{{ step("delete-namespace") }}

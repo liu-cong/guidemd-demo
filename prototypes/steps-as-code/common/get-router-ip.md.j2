@@ -1,0 +1,9 @@
+{% if router_mode == "standalone" %}
+**Standalone Mode**
+
+{{ step("get-ip-standalone") }}
+{% else %}
+**Gateway Mode**
+
+{{ step("get-ip-gateway") }}
+{% endif %}

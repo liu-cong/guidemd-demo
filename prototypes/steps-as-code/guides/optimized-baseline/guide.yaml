@@ -1,0 +1,80 @@
+# optimized-baseline — guide configuration (data only; parsed by PyYAML).
+# Dimension values reach the step scripts as environment variables
+# (upper-cased dimension names), exported by the generated `configure` step
+# together with the constants under `env:`.
+
+name: optimized-baseline
+title: Optimized Baseline
+repo: llm-d/llm-d              # where badge links point
+step_tags: [ci, dry-run, e2e]  # the only tag keys steps/*.sh may declare
+
+# Guide constants — exported by the configure step; steps consume $VARS.
+env:
+  GUIDE_NAME: optimized-baseline
+  NAMESPACE: llm-d-optimized-baseline
+  GATEWAY_NAME: llm-d-inference-gateway
+  HF_TOKEN: HF_TOKEN_PLACEHOLDER
+  CURL_TEST_IMAGE: cfmanteiga/alpine-bash-curl-jq:latest
+  BENCHMARK_REF: main
+  HARNESS: inference-perf
+  WORKLOAD: guide_optimized-baseline_1.yaml
+
+# Declaration order = pick order; first value = default.
+dimensions:
+  infra_provider:
+    label: Infra provider
+    values: [base, gke]
+  router_mode:
+    label: Router mode
+    values: [standalone, gateway]
+  gateway_provider:
+    label: Gateway provider
+    values: [none, gke, istio, agentgateway]
+  accelerator:
+    label: Accelerator
+    values: [gpu, amd, xpu, hpu, tpu/v6, tpu/v7, cpu]
+  model_server:
+    label: Model server
+    values: [vllm, sglang, trtllm]
+  model:
+    label: Model
+    values: [Qwen/Qwen3-32B, openai/gpt-oss-120b]
+  monitoring:
+    label: Prometheus monitoring
+    values: ["off", "on"]
+
+# `when` (earlier dims) narrows `allow` (later dims).
+rules:
+  - when:  { infra_provider: base }
+    allow: { accelerator: [gpu, amd, xpu, hpu, cpu] }
+  - when:  { infra_provider: gke }
+    allow: { accelerator: [gpu, tpu/v6, tpu/v7] }
+  - when:  { router_mode: standalone }
+    allow: { gateway_provider: [none] }
+  - when:  { router_mode: gateway }
+    allow: { gateway_provider: [gke, istio, agentgateway] }
+  - when:  { infra_provider: base }
+    allow: { gateway_provider: [none, istio, agentgateway] }
+  - when:  { accelerator: [amd, xpu, hpu, tpu/v6, tpu/v7, cpu] }
+    allow: { model_server: [vllm], model: [Qwen/Qwen3-32B] }
+  - when:  { model_server: [sglang, trtllm] }
+    allow: { model: [Qwen/Qwen3-32B] }
+
+# Tested matrix; badge/workflow rows feed {{ badges() }}.
+ci:
+  - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
+      badge: E2E (base GPU vLLM),        workflow: consolidate-status-optimized-baseline-base-acc-gpu-vllm-x.yaml }
+  - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "on",
+      badge: E2E (base GPU monitoring),  workflow: consolidate-status-optimized-baseline-base-acc-gpu-vllm-mon-x.yaml }
+  - { infra_provider: base, router_mode: gateway,    gateway_provider: istio, accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
+      badge: E2E (base GPU gateway),     workflow: consolidate-status-optimized-baseline-base-gw-istio-acc-gpu-vllm-x.yaml }
+  - { infra_provider: gke,  router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
+      badge: E2E (GKE GPU),              workflow: consolidate-status-optimized-baseline-gke-acc-gpu-vllm-x.yaml }
+  - { infra_provider: gke,  router_mode: standalone, gateway_provider: none,  accelerator: tpu/v6, model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
+      badge: E2E (GKE TPU v6e),          workflow: consolidate-status-optimized-baseline-gke-acc-tpu-vllm-x.yaml }
+  - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: amd,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
+      badge: E2E (AMD ROCm),             workflow: consolidate-status-optimized-baseline-amd-acc-rocm-vllm-x.yaml }
+  - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: xpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
+      badge: E2E (Intel XPU),            workflow: consolidate-status-optimized-baseline-intel-acc-xpu-vllm-x.yaml }
+  - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: sglang, model: Qwen/Qwen3-32B, monitoring: "off",
+      badge: E2E (base GPU SGLang),      workflow: consolidate-status-optimized-baseline-base-acc-gpu-sglang-x.yaml }
