@@ -62,11 +62,6 @@ tests/            ──▶ compiler test suite (python3 -m unittest discover -s
    else's prose; now a dimension owner writes their `when` blocks and
    fragments in isolation. For readers, the same declaration produces a
    contextual guide — only their configuration, no distraction.
-7. **Constraints, not enumeration.** Dimensions are declared in pick order;
-   short `rules` narrow later choices from earlier ones. 7 rules turn 672 raw
-   combinations into 96 valid ones; a small flattened `ci:` list is the
-   tested matrix. Supported ≠ tested: the interactive page tells the reader
-   whether their picked variant is a CI-tested cell or merely supported.
 8. **Compose, don't copy.** Shared sections (prereqs, install router,
    verification, benchmark, cleanup) are `import`ed fragments with
    parameters; fragments import fragments, and headings re-base to their
@@ -95,7 +90,6 @@ tests/            ──▶ compiler test suite (python3 -m unittest discover -s
                                                      keys must appear in `step_tags:`
 <!-- step e2e=skip hide=true -->                     …hidden from readers, in every plan
 
-<!-- md-only --> … <!-- end -->                      GitHub copy only, not the web page
 <!-- badges -->                                      build badges derived from ci: rows
 {{ accelerator }}                                    the picked value, inline
 ```

@@ -10,14 +10,6 @@
 [![E2E (Intel XPU)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-intel-acc-xpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-intel-acc-xpu-vllm-x.yaml)
 [![E2E (base GPU SGLang)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-acc-gpu-sglang-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-acc-gpu-sglang-x.yaml)
 
-<!-- md-only -->
-> [!TIP]
-> **Reading this on GitHub?** This is the full guide; the default
-> configuration is shown expanded and alternatives are collapsed — expand the
-> *Alternative* sections that match your setup. For the interactive version
-> with a configuration picker, see this guide on [llm-d.ai](https://llm-d.ai).
-<!-- end -->
-
 ## Overview
 
 This guide deploys the recommended out of the box
