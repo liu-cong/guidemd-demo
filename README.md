@@ -15,18 +15,18 @@ dimensions/rules/ci matrix, per-variant projection, and CI plans derived
 from the source instead of scraped from the README. They differ in one
 fundamental choice: *what the authored source is*.
 
-| | [`prototypes/annotated-markdown/`](prototypes/annotated-markdown/) | [`prototypes/jinja-markdown/`](prototypes/jinja-markdown/) |
-| --- | --- | --- |
-| Source of truth | **one plain-markdown file** with invisible comment directives (`when` / `import` / `step`) | **one Jinja2 template** + `guide.yaml`: `{% if %}` / `{% include %}` / inline `{% step %}` blocks |
-| Authored file readable as-is | ✔ — renders on GitHub; zero annotations = valid guide | prose reads fine, but it's a template — readers get generated artifacts |
-| Parser to maintain | ~300 lines of bespoke document parsing (fences, comments, provenance) | **none** — Jinja parses everything, incl. the `{% step %}` tag via Jinja's extension API |
-| Conditionals / composition | invented directives, this compiler only | standard Jinja — known from Ansible/Helm/Hugo, editor-supported |
-| Step identity & provenance | positional; provenance hand-threaded through import expansion | optional `id=`; template `file:line` baked in by Jinja at parse time |
-| Exhaustiveness safety | heuristic warnings over adjacent `when` groups | explicit `group=` partition check + `{% else %}` makes gaps hard to write |
-| GitHub reading copy | one document, default path expanded, **all** alternatives in collapsed `<details>` | default document + **configuration table**; CI-tested rows link to pre-rendered `variants/*.md` (website serves all 96) |
-| Docusaurus story | chunk JSON → custom component (designed, not built) | **`emit-docusaurus` built**: per-variant static `.mdx` pages (default listed, rest `unlisted`), VariantSwitcher navigates between them |
-| Migration from existing guides | incremental — annotate a plain README step by step | conversion — turn a README into a template |
-| Dependencies | PyYAML | PyYAML + Jinja2 |
+| | [`prototypes/pr1988-guide-yaml/`](prototypes/pr1988-guide-yaml/) (baseline) | [`prototypes/annotated-markdown/`](prototypes/annotated-markdown/) | [`prototypes/jinja-markdown/`](prototypes/jinja-markdown/) |
+| --- | --- | --- | --- |
+| Source of truth | `guide.yaml` (bash steps as YAML data) + a shared README template | **one plain-markdown file** with invisible comment directives (`when` / `import` / `step`) | **one Jinja2 template** + `guide.yaml`: `{% if %}` / `{% include %}` / inline `{% step %}` blocks |
+| Authored file readable as-is | ✖ — YAML isn't a doc; readers get the rendered README | ✔ — renders on GitHub; zero annotations = valid guide | prose reads fine, but it's a template — readers get generated artifacts |
+| Parser to maintain | ~800 lines across the validate/render/check script triad (custom YAML schema + README checker) | ~300 lines of bespoke document parsing (fences, comments, provenance) | **none** — Jinja parses everything, incl. the `{% step %}` tag via Jinja's extension API |
+| Conditionals / composition | `when:` on bash steps only — prose can't vary; no shared fragments | invented directives, this compiler only | standard Jinja — known from Ansible/Helm/Hugo, editor-supported |
+| Step identity & provenance | named sections + step position in the YAML | positional; provenance hand-threaded through import expansion | optional `id=`; template `file:line` baked in by Jinja at parse time |
+| Exhaustiveness safety | none — no dimensions/rules matrix; invalid combos aren't modeled | heuristic warnings over adjacent `when` groups | explicit `group=` partition check + `{% else %}` makes gaps hard to write |
+| GitHub reading copy | **one union README** — every variant's commands with *"comment out / uncomment"* guidance | one document, default path expanded, **all** alternatives in collapsed `<details>` | default document + **configuration table**; CI-tested rows link to pre-rendered `variants/*.md` (website serves all 96) |
+| Docusaurus story | none — README synced as today | chunk JSON → custom component (designed, not built) | **`emit-docusaurus` built**: per-variant static `.mdx` pages (default listed, rest `unlisted`), VariantSwitcher navigates between them |
+| Migration from existing guides | move each README's bash into `guide.yaml` | incremental — annotate a plain README step by step | conversion — turn a README into a template |
+| Dependencies | PyYAML | PyYAML | PyYAML + Jinja2 |
 
 **Shared by both:** the ordered-dimensions + rules + constrained-matrix
 model (the genuinely novel part — no existing docs tool has it), the
@@ -44,6 +44,10 @@ and identical per-cell step counts across all three plan flavors.
 
 ## Which one?
 
+- **pr1988-guide-yaml** is the upstream baseline, kept verbatim for
+  comparison — both successors preserve its derived-docs direction and CI
+  gate while fixing its union-not-projection rendering, invariant prose,
+  and missing supported-combinations model.
 - **annotated-markdown** optimizes for the *writer's* plain-markdown,
   single-readable-file experience and incremental adoption; it pays with a
   bespoke document parser and positional steps.
