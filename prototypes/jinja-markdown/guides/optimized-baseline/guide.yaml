@@ -5,8 +5,7 @@
 
 name: optimized-baseline
 title: Optimized Baseline
-repo: llm-d/llm-d              # where badge links point
-step_tags: [ci, dry-run, e2e]  # the only tag keys steps/*.sh may declare
+step_tags: [ci, dry-run, e2e]  # the only tag keys {% step %} blocks may use
 
 # Guide constants — exported by the configure step; steps consume $VARS.
 env:
@@ -60,21 +59,13 @@ rules:
   - when:  { model_server: [sglang, trtllm] }
     allow: { model: [Qwen/Qwen3-32B] }
 
-# Tested matrix; badge/workflow rows feed {{ badges() }}.
+# Tested matrix — each row is one CI job (a complete flattened assignment).
 ci:
-  - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
-      badge: E2E (base GPU vLLM),        workflow: consolidate-status-optimized-baseline-base-acc-gpu-vllm-x.yaml }
-  - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "on",
-      badge: E2E (base GPU monitoring),  workflow: consolidate-status-optimized-baseline-base-acc-gpu-vllm-mon-x.yaml }
-  - { infra_provider: base, router_mode: gateway,    gateway_provider: istio, accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
-      badge: E2E (base GPU gateway),     workflow: consolidate-status-optimized-baseline-base-gw-istio-acc-gpu-vllm-x.yaml }
-  - { infra_provider: gke,  router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
-      badge: E2E (GKE GPU),              workflow: consolidate-status-optimized-baseline-gke-acc-gpu-vllm-x.yaml }
-  - { infra_provider: gke,  router_mode: standalone, gateway_provider: none,  accelerator: tpu/v6, model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
-      badge: E2E (GKE TPU v6e),          workflow: consolidate-status-optimized-baseline-gke-acc-tpu-vllm-x.yaml }
-  - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: amd,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
-      badge: E2E (AMD ROCm),             workflow: consolidate-status-optimized-baseline-amd-acc-rocm-vllm-x.yaml }
-  - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: xpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off",
-      badge: E2E (Intel XPU),            workflow: consolidate-status-optimized-baseline-intel-acc-xpu-vllm-x.yaml }
-  - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: sglang, model: Qwen/Qwen3-32B, monitoring: "off",
-      badge: E2E (base GPU SGLang),      workflow: consolidate-status-optimized-baseline-base-acc-gpu-sglang-x.yaml }
+  - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off" }
+  - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "on"  }
+  - { infra_provider: base, router_mode: gateway,    gateway_provider: istio, accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off" }
+  - { infra_provider: gke,  router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off" }
+  - { infra_provider: gke,  router_mode: standalone, gateway_provider: none,  accelerator: tpu/v6, model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off" }
+  - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: amd,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off" }
+  - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: xpu,    model_server: vllm,   model: Qwen/Qwen3-32B, monitoring: "off" }
+  - { infra_provider: base, router_mode: standalone, gateway_provider: none,  accelerator: gpu,    model_server: sglang, model: Qwen/Qwen3-32B, monitoring: "off" }

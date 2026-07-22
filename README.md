@@ -16,17 +16,19 @@ fundamental choice: *what the authored source is*.
 | Conditionals / composition | invented directives, this compiler only | standard Jinja — known from Ansible/Helm/Hugo, editor-supported |
 | Step identity & provenance | positional; provenance hand-threaded through import expansion | optional `id=`; template `file:line` baked in by Jinja at parse time |
 | Exhaustiveness safety | heuristic warnings over adjacent `when` groups | explicit `group=` partition check + `{% else %}` makes gaps hard to write |
-| GitHub reading copy | one document, default path expanded, **all** alternatives in collapsed `<details>` | default-configuration document (variants: interactive page / Docusaurus pages) |
+| GitHub reading copy | one document, default path expanded, **all** alternatives in collapsed `<details>` | default document with a **configuration table** linking 95 pre-rendered `variants/*.md` — click your row, read your guide |
 | Docusaurus story | chunk JSON → custom component (designed, not built) | **`emit-docusaurus` built**: per-variant static `.mdx` pages (default listed, rest `unlisted`), VariantSwitcher navigates between them |
 | Migration from existing guides | incremental — annotate a plain README step by step | conversion — turn a README into a template |
 | Dependencies | PyYAML | PyYAML + Jinja2 |
 
 **Shared by both:** the ordered-dimensions + rules + constrained-matrix
 model (the genuinely novel part — no existing docs tool has it), the
-tag-based dry-run/e2e plan split, cluster-free dry-runs, CI-tested badges
-per variant, generated E2E badges from the `ci:` matrix, and full-fidelity
+tag-based dry-run/e2e plan split, cluster-free dry-runs, and full-fidelity
 ports of upstream
 [`guides/optimized-baseline`](https://github.com/llm-d/llm-d/tree/main/guides/optimized-baseline).
+(CI-tested badges and generated E2E badge blocks live in the
+annotated-markdown prototype; jinja-markdown was deliberately trimmed to
+the bare minimum — those come back later if it wins.)
 
 **Validated against each other:** the parity suite in
 [`prototypes/jinja-markdown/tests/`](prototypes/jinja-markdown/tests/test_guidegen.py)

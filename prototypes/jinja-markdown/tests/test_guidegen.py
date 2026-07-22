@@ -1,6 +1,6 @@
-"""Tests for guidegen.py — golden checks on the ported guide, property tests
-over every supported combination, unit tests per validation rule, and a
-cross-prototype parity suite against the annotated-markdown prototype.
+"""Tests for the guidegen package — golden checks on the ported guide,
+property tests over every supported combination, unit tests per validation
+rule, and a cross-prototype parity suite against annotated-markdown.
 
 Run from prototypes/jinja-markdown:  python3 -m unittest discover -s tests -q
 """
@@ -15,7 +15,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from guidegen import Guide, alerts_to_admonitions, plan_bash, render_github  # noqa: E402
+from guidegen import Guide                              # noqa: E402
+from guidegen.docusaurus import alerts_to_admonitions   # noqa: E402
+from guidegen.plan import plan_bash                     # noqa: E402
+from guidegen import render, validate                   # noqa: E402
 
 GUIDE_DIR = ROOT / "guides" / "optimized-baseline"
 
@@ -32,8 +35,9 @@ def guide():
     global _GUIDE
     if _GUIDE is None:
         _GUIDE = Guide(GUIDE_DIR)
-        _GUIDE.validate_cells()
         assert not _GUIDE.errors, _GUIDE.errors
+        errs = validate.validate_cells(_GUIDE)
+        assert not errs, errs
     return _GUIDE
 
 
@@ -41,9 +45,6 @@ class PortedGuideTests(unittest.TestCase):
 
     def setUp(self):
         self.g = guide()
-
-    def test_no_warnings(self):
-        self.assertEqual(self.g.warnings, [])
 
     def test_matrix_shape(self):
         self.assertEqual(len(self.g.matrix.supported), 96)
@@ -96,17 +97,32 @@ class PortedGuideTests(unittest.TestCase):
         joined = "\n".join(s["run"] for s in plan["steps"])
         self.assertIn("gateway.class=${GATEWAY_PROVIDER}", joined)
 
-    def test_readonly_md_fresh(self):
-        committed = (GUIDE_DIR / "readonly-guide.md").read_text()
-        self.assertEqual(committed, render_github(self.g))
-        self.assertIn("badge.svg", committed)
-
     def test_hidden_steps_out_of_docs_in_plans(self):
         cell = self.g.matrix.default_cell()
         md, _ = self.g.render(cell)
         self.assertNotIn("helm template", md)
         dry = self.g.plan(cell, skips=DRY_RUN_SKIPS)
         self.assertTrue(any("helm template" in s["run"] for s in dry["steps"]))
+
+    def test_reading_artifacts_fresh(self):
+        self.assertEqual(render.check(self.g), [])
+
+    def test_index_has_configuration_table(self):
+        index = (GUIDE_DIR / "readonly-guide.md").read_text()
+        self.assertIn("All 96 supported configurations", index)
+        self.assertIn("**this document**", index)
+        # every non-default variant is linked exactly once
+        self.assertEqual(index.count("](variants/"), 95)
+
+    def test_variant_files_complete_and_readable(self):
+        files = list((GUIDE_DIR / "variants").glob("*.md"))
+        self.assertEqual(len(files), 95)
+        tpu = (GUIDE_DIR / "variants" /
+               "gke-standalone-none-tpuv6-vllm-QwenQwen3-32B-off.md").read_text()
+        self.assertIn("**Configuration:** infra_provider=gke", tpu)
+        self.assertIn('export ACCELERATOR="tpu/v6"', tpu)     # personalized
+        self.assertIn("[all configurations](../readonly-guide.md)", tpu)
+        self.assertNotIn("{%", tpu)
 
     def test_docusaurus_emit(self):
         out = GUIDE_DIR / "docusaurus"
@@ -178,6 +194,9 @@ class UnitTests(unittest.TestCase):
         (self.gdir / "guide.md.j2").write_text(textwrap.dedent(template))
         return Guide(self.gdir)
 
+    def errs(self, g):
+        return g.errors + validate.validate_cells(g)
+
     def test_inline_step_collected_and_rendered(self):
         g = self.mkguide('{% step %}\nls -la\n{% endstep %}\n')
         md, collected = g.render(g.matrix.default_cell())
@@ -187,18 +206,15 @@ class UnitTests(unittest.TestCase):
 
     def test_undeclared_tag_fails(self):
         g = self.mkguide('{% step tags="dry-rn=skip" %}\nls\n{% endstep %}\n')
-        g.validate_cells()
-        self.assertTrue(any("'dry-rn'" in e for e in g.errors), g.errors)
+        self.assertTrue(any("'dry-rn'" in e for e in self.errs(g)))
 
     def test_handwritten_bash_fence_fails(self):
         g = self.mkguide('```bash\nescaped\n```\n')
-        g.validate_cells()
-        self.assertTrue(any("escapes CI" in e for e in g.errors), g.errors)
+        self.assertTrue(any("escapes CI" in e for e in self.errs(g)))
 
     def test_console_fence_is_fine(self):
         g = self.mkguide('```console\ndisplay only\n```\n')
-        g.validate_cells()
-        self.assertEqual(g.errors, [])
+        self.assertEqual(self.errs(g), [])
 
     def test_group_must_partition(self):
         g = self.mkguide(textwrap.dedent("""\
@@ -208,9 +224,8 @@ class UnitTests(unittest.TestCase):
             {% endstep %}
             {% endif %}
         """))
-        g.validate_cells()
         self.assertTrue(any("group 'g1'" in e and "nothing" in e
-                            for e in g.errors), g.errors)
+                            for e in self.errs(g)))
 
     def test_else_branch_partitions_cleanly(self):
         g = self.mkguide(textwrap.dedent("""\
@@ -224,8 +239,7 @@ class UnitTests(unittest.TestCase):
             {% endstep %}
             {% endif %}
         """))
-        g.validate_cells()
-        self.assertEqual(g.errors, [])
+        self.assertEqual(self.errs(g), [])
 
     def test_duplicate_explicit_id_fails(self):
         g = self.mkguide(textwrap.dedent("""\
@@ -236,18 +250,29 @@ class UnitTests(unittest.TestCase):
             two
             {% endstep %}
         """))
-        g.validate_cells()
-        self.assertTrue(any("step id 's'" in e for e in g.errors), g.errors)
+        self.assertTrue(any("step id 's'" in e for e in self.errs(g)))
 
     def test_typoed_variable_fails(self):
         g = self.mkguide('{{ acelerator }}\n')  # StrictUndefined
-        g.validate_cells()
-        self.assertTrue(any("acelerator" in e for e in g.errors), g.errors)
+        self.assertTrue(any("acelerator" in e for e in self.errs(g)))
 
     def test_bad_bash_body_fails(self):
         g = self.mkguide('{% step %}\nif then fi (\n{% endstep %}\n')
-        g.validate_cells()
-        self.assertTrue(any("bash -n" in e for e in g.errors), g.errors)
+        self.assertTrue(any("bash -n" in e for e in self.errs(g)))
+
+    def test_variants_written_and_checked(self):
+        g = self.mkguide('# T\n\nvalue of a: {{ a }}\n')
+        self.assertEqual(self.errs(g), [])
+        self.assertTrue(render.check(g))            # nothing written yet
+        written, total, pruned = render.write(g)
+        self.assertEqual((written, total, pruned), (4, 4, 0))  # index + 3
+        self.assertEqual(render.check(g), [])
+        # orphan detection: plant a stray variant file
+        stray = self.gdir / "variants" / "stray.md"
+        stray.write_text("old")
+        self.assertTrue(any("orphaned" in p for p in render.check(g)))
+        _, _, pruned = render.write(g)
+        self.assertEqual(pruned, 1)
 
     def test_unsupported_assignment_rejected(self):
         y = TWO_DIMS + "rules:\n  - when:  { a: y }\n    allow: { b: [q] }\n"

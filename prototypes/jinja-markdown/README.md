@@ -13,11 +13,24 @@ common/
   *.md.j2           shared prose partials ({% include %})
 ```
 
-`guidegen.py` owns **no document parser** — Jinja parses the template,
-including our one custom tag, `{% step %}`, registered through Jinja's
-documented extension API (~30 lines that *use* Jinja's parser, not replace
-it). What remains custom is the matrix/rules/plan logic that is custom in
-any design.
+The tool is a small package of single-purpose modules — consumers take
+only what they need (CI needs just the first three):
+
+```
+guidegen/matrix.py      dimension matrix parsing (dimensions/rules/ci)
+guidegen/guide.py       core: load guide.yaml, render guide.md.j2, collect steps
+guidegen/plan.py        the CI surface: plan -> bash / yaml / json
+guidegen/validate.py    the PR gate checks
+guidegen/render.py      reading artifacts: readonly-guide.md + variants/
+guidegen/html.py        standalone interactive picker page
+guidegen/docusaurus.py  llm-d.ai pages + VariantSwitcher
+guidegen/cli.py         dispatch (lazy imports per subcommand)
+```
+
+It owns **no document parser** — Jinja parses the template, including our
+one custom tag, `{% step %}`, registered through Jinja's documented
+extension API (~30 lines that *use* Jinja's parser, not replace it). What
+remains custom is the matrix/rules/plan logic that is custom in any design.
 
 ## The authoring model
 
@@ -36,7 +49,6 @@ curl -sfL https://…/${GAIE_VERSION}/v1-manifests.yaml -o /dev/null
 {% step group="select-overlay" %} … {% endstep %}   exactly-one-per-cell check
 {% step id="install-router", … %} … {% endstep %}   optional stable id
 {{ configure_step() }}                              generated env exports
-{{ badges() }}                                      E2E badges from ci: rows
 ```
 
 Steps are written **inline where they belong in the narrative** — no
@@ -67,6 +79,25 @@ identical supported matrices and identical per-cell step counts vs the
 annotated-markdown prototype across 96 variants × 3 plan flavors
 ([tests/test_guidegen.py](tests/test_guidegen.py)).
 
+## Reading on GitHub / at a checkout
+
+`render-md` produces the zero-tooling reading surface, freshness-gated by
+`validate`:
+
+- **`readonly-guide.md`** — the default configuration, with a
+  **configuration table** right under the title: every supported
+  combination in a collapsed `<details>` block, each row linking to its
+  pre-rendered copy.
+- **`variants/<slug>.md`** — one fully rendered guide per non-default
+  combination (95 files), each personalized end to end and linking back to
+  the index. Orphaned variants (combinations that stop being supported)
+  are pruned on regeneration and flagged by the freshness check.
+
+So a reader who never leaves GitHub — or is browsing a local checkout with
+no Python — opens the table, clicks their row, and gets exactly their
+guide. Tool users can instead run
+`./guidegen.py render guides/optimized-baseline --set accelerator=tpu/v6`.
+
 ## Docusaurus integration (`emit-docusaurus`)
 
 llm-d.ai currently copies guide markdown into its Docusaurus build. This
@@ -84,9 +115,9 @@ emits, per guide:
   a real static page (theme + deep-linkable + no-JS readable), but hidden
   from the sidebar, search index and sitemap, so 95 variants don't spam
   navigation
-- **`_VariantSwitcher.jsx`** — cascading pickers in dimension order with a
-  "✓ CI-tested / ⚠ supported" badge; picking a variant *navigates* to that
-  variant's own static page (no client-side markdown rendering at all)
+- **`_VariantSwitcher.jsx`** — cascading pickers in dimension order;
+  picking a variant *navigates* to that variant's own static page (no
+  client-side markdown rendering at all)
 - **`_variants.json`** — the support matrix + slugs
   (underscore-prefixed files are ignored by Docusaurus's page loader)
 
@@ -118,8 +149,7 @@ should be search-indexed.
 
 ```bash
 ./guidegen.py validate    guides/optimized-baseline            # the PR gate
-./guidegen.py validate --cells guides/optimized-baseline       # per-variant step counts
-./guidegen.py render-md   guides/optimized-baseline            # committed GitHub copy
+./guidegen.py render-md   guides/optimized-baseline            # index + variants/ (GitHub copy)
 ./guidegen.py render-html guides/optimized-baseline            # picker page (96 variants)
 ./guidegen.py emit-docusaurus guides/optimized-baseline        # llm-d.ai pages + switcher
 ./guidegen.py render      guides/optimized-baseline --set accelerator=tpu/v6
@@ -131,5 +161,5 @@ should be search-indexed.
   --skip ci=skip --skip e2e=skip --format yaml                 # e2e, structured
 
 ./guidegen.py matrix --github guides/optimized-baseline        # the 8 tested cells
-python3 -m unittest discover -s tests -q                       # 24 tests incl. parity
+python3 -m unittest discover -s tests -q                       # 26 tests incl. parity
 ```

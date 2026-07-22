@@ -36,7 +36,6 @@ export default function VariantSwitcher({current}) {
     });
     go(picks);
   };
-  const tested = data.ci.some((c) => data.order.every((d) => c[d] === current[d]));
   const picks = {};
   return (
     <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap',
@@ -56,9 +55,6 @@ export default function VariantSwitcher({current}) {
           </label>
         );
       })}
-      <span style={{fontSize: '0.8rem'}}>
-        {tested ? '✓ CI-tested configuration' : '⚠ supported, not CI-tested'}
-      </span>
     </div>
   );
 }

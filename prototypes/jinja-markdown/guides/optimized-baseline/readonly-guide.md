@@ -1,14 +1,113 @@
-<!-- GENERATED FILE — DO NOT EDIT. Rendered for the DEFAULT configuration (infra_provider=base router_mode=standalone gateway_provider=none accelerator=gpu model_server=vllm model=Qwen/Qwen3-32B monitoring=off). Other variants: guidegen.py render --set …, or the interactive page. -->
+<!-- GENERATED FILE — DO NOT EDIT. Default configuration. Regenerate with: guidegen.py render-md <guide dir> -->
 # Optimized Baseline
 
-[![E2E (base GPU vLLM)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-acc-gpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-acc-gpu-vllm-x.yaml)
-[![E2E (base GPU monitoring)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-acc-gpu-vllm-mon-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-acc-gpu-vllm-mon-x.yaml)
-[![E2E (base GPU gateway)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-gw-istio-acc-gpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-gw-istio-acc-gpu-vllm-x.yaml)
-[![E2E (GKE GPU)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-gke-acc-gpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-gke-acc-gpu-vllm-x.yaml)
-[![E2E (GKE TPU v6e)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-gke-acc-tpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-gke-acc-tpu-vllm-x.yaml)
-[![E2E (AMD ROCm)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-amd-acc-rocm-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-amd-acc-rocm-vllm-x.yaml)
-[![E2E (Intel XPU)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-intel-acc-xpu-vllm-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-intel-acc-xpu-vllm-x.yaml)
-[![E2E (base GPU SGLang)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-acc-gpu-sglang-x.yaml/badge.svg)](https://github.com/llm-d/llm-d/actions/workflows/consolidate-status-optimized-baseline-base-acc-gpu-sglang-x.yaml)
+## Configurations
+
+This document shows the **default configuration** (infra_provider=base router_mode=standalone gateway_provider=none accelerator=gpu model_server=vllm model=Qwen/Qwen3-32B monitoring=off).
+Every supported combination has a pre-rendered guide:
+
+<details><summary><b>All 96 supported configurations</b></summary>
+
+| Infra provider | Router mode | Gateway provider | Accelerator | Model server | Model | Prometheus monitoring | Guide |
+|---|---|---|---|---|---|---|---|
+| base | standalone | none | gpu | vllm | Qwen/Qwen3-32B | off | **this document** |
+| base | standalone | none | gpu | vllm | Qwen/Qwen3-32B | on | [open](variants/base-standalone-none-gpu-vllm-QwenQwen3-32B-on.md) |
+| base | standalone | none | gpu | vllm | openai/gpt-oss-120b | off | [open](variants/base-standalone-none-gpu-vllm-openaigpt-oss-120b-off.md) |
+| base | standalone | none | gpu | vllm | openai/gpt-oss-120b | on | [open](variants/base-standalone-none-gpu-vllm-openaigpt-oss-120b-on.md) |
+| base | standalone | none | gpu | sglang | Qwen/Qwen3-32B | off | [open](variants/base-standalone-none-gpu-sglang-QwenQwen3-32B-off.md) |
+| base | standalone | none | gpu | sglang | Qwen/Qwen3-32B | on | [open](variants/base-standalone-none-gpu-sglang-QwenQwen3-32B-on.md) |
+| base | standalone | none | gpu | trtllm | Qwen/Qwen3-32B | off | [open](variants/base-standalone-none-gpu-trtllm-QwenQwen3-32B-off.md) |
+| base | standalone | none | gpu | trtllm | Qwen/Qwen3-32B | on | [open](variants/base-standalone-none-gpu-trtllm-QwenQwen3-32B-on.md) |
+| base | standalone | none | amd | vllm | Qwen/Qwen3-32B | off | [open](variants/base-standalone-none-amd-vllm-QwenQwen3-32B-off.md) |
+| base | standalone | none | amd | vllm | Qwen/Qwen3-32B | on | [open](variants/base-standalone-none-amd-vllm-QwenQwen3-32B-on.md) |
+| base | standalone | none | xpu | vllm | Qwen/Qwen3-32B | off | [open](variants/base-standalone-none-xpu-vllm-QwenQwen3-32B-off.md) |
+| base | standalone | none | xpu | vllm | Qwen/Qwen3-32B | on | [open](variants/base-standalone-none-xpu-vllm-QwenQwen3-32B-on.md) |
+| base | standalone | none | hpu | vllm | Qwen/Qwen3-32B | off | [open](variants/base-standalone-none-hpu-vllm-QwenQwen3-32B-off.md) |
+| base | standalone | none | hpu | vllm | Qwen/Qwen3-32B | on | [open](variants/base-standalone-none-hpu-vllm-QwenQwen3-32B-on.md) |
+| base | standalone | none | cpu | vllm | Qwen/Qwen3-32B | off | [open](variants/base-standalone-none-cpu-vllm-QwenQwen3-32B-off.md) |
+| base | standalone | none | cpu | vllm | Qwen/Qwen3-32B | on | [open](variants/base-standalone-none-cpu-vllm-QwenQwen3-32B-on.md) |
+| base | gateway | istio | gpu | vllm | Qwen/Qwen3-32B | off | [open](variants/base-gateway-istio-gpu-vllm-QwenQwen3-32B-off.md) |
+| base | gateway | istio | gpu | vllm | Qwen/Qwen3-32B | on | [open](variants/base-gateway-istio-gpu-vllm-QwenQwen3-32B-on.md) |
+| base | gateway | istio | gpu | vllm | openai/gpt-oss-120b | off | [open](variants/base-gateway-istio-gpu-vllm-openaigpt-oss-120b-off.md) |
+| base | gateway | istio | gpu | vllm | openai/gpt-oss-120b | on | [open](variants/base-gateway-istio-gpu-vllm-openaigpt-oss-120b-on.md) |
+| base | gateway | istio | gpu | sglang | Qwen/Qwen3-32B | off | [open](variants/base-gateway-istio-gpu-sglang-QwenQwen3-32B-off.md) |
+| base | gateway | istio | gpu | sglang | Qwen/Qwen3-32B | on | [open](variants/base-gateway-istio-gpu-sglang-QwenQwen3-32B-on.md) |
+| base | gateway | istio | gpu | trtllm | Qwen/Qwen3-32B | off | [open](variants/base-gateway-istio-gpu-trtllm-QwenQwen3-32B-off.md) |
+| base | gateway | istio | gpu | trtllm | Qwen/Qwen3-32B | on | [open](variants/base-gateway-istio-gpu-trtllm-QwenQwen3-32B-on.md) |
+| base | gateway | istio | amd | vllm | Qwen/Qwen3-32B | off | [open](variants/base-gateway-istio-amd-vllm-QwenQwen3-32B-off.md) |
+| base | gateway | istio | amd | vllm | Qwen/Qwen3-32B | on | [open](variants/base-gateway-istio-amd-vllm-QwenQwen3-32B-on.md) |
+| base | gateway | istio | xpu | vllm | Qwen/Qwen3-32B | off | [open](variants/base-gateway-istio-xpu-vllm-QwenQwen3-32B-off.md) |
+| base | gateway | istio | xpu | vllm | Qwen/Qwen3-32B | on | [open](variants/base-gateway-istio-xpu-vllm-QwenQwen3-32B-on.md) |
+| base | gateway | istio | hpu | vllm | Qwen/Qwen3-32B | off | [open](variants/base-gateway-istio-hpu-vllm-QwenQwen3-32B-off.md) |
+| base | gateway | istio | hpu | vllm | Qwen/Qwen3-32B | on | [open](variants/base-gateway-istio-hpu-vllm-QwenQwen3-32B-on.md) |
+| base | gateway | istio | cpu | vllm | Qwen/Qwen3-32B | off | [open](variants/base-gateway-istio-cpu-vllm-QwenQwen3-32B-off.md) |
+| base | gateway | istio | cpu | vllm | Qwen/Qwen3-32B | on | [open](variants/base-gateway-istio-cpu-vllm-QwenQwen3-32B-on.md) |
+| base | gateway | agentgateway | gpu | vllm | Qwen/Qwen3-32B | off | [open](variants/base-gateway-agentgateway-gpu-vllm-QwenQwen3-32B-off.md) |
+| base | gateway | agentgateway | gpu | vllm | Qwen/Qwen3-32B | on | [open](variants/base-gateway-agentgateway-gpu-vllm-QwenQwen3-32B-on.md) |
+| base | gateway | agentgateway | gpu | vllm | openai/gpt-oss-120b | off | [open](variants/base-gateway-agentgateway-gpu-vllm-openaigpt-oss-120b-off.md) |
+| base | gateway | agentgateway | gpu | vllm | openai/gpt-oss-120b | on | [open](variants/base-gateway-agentgateway-gpu-vllm-openaigpt-oss-120b-on.md) |
+| base | gateway | agentgateway | gpu | sglang | Qwen/Qwen3-32B | off | [open](variants/base-gateway-agentgateway-gpu-sglang-QwenQwen3-32B-off.md) |
+| base | gateway | agentgateway | gpu | sglang | Qwen/Qwen3-32B | on | [open](variants/base-gateway-agentgateway-gpu-sglang-QwenQwen3-32B-on.md) |
+| base | gateway | agentgateway | gpu | trtllm | Qwen/Qwen3-32B | off | [open](variants/base-gateway-agentgateway-gpu-trtllm-QwenQwen3-32B-off.md) |
+| base | gateway | agentgateway | gpu | trtllm | Qwen/Qwen3-32B | on | [open](variants/base-gateway-agentgateway-gpu-trtllm-QwenQwen3-32B-on.md) |
+| base | gateway | agentgateway | amd | vllm | Qwen/Qwen3-32B | off | [open](variants/base-gateway-agentgateway-amd-vllm-QwenQwen3-32B-off.md) |
+| base | gateway | agentgateway | amd | vllm | Qwen/Qwen3-32B | on | [open](variants/base-gateway-agentgateway-amd-vllm-QwenQwen3-32B-on.md) |
+| base | gateway | agentgateway | xpu | vllm | Qwen/Qwen3-32B | off | [open](variants/base-gateway-agentgateway-xpu-vllm-QwenQwen3-32B-off.md) |
+| base | gateway | agentgateway | xpu | vllm | Qwen/Qwen3-32B | on | [open](variants/base-gateway-agentgateway-xpu-vllm-QwenQwen3-32B-on.md) |
+| base | gateway | agentgateway | hpu | vllm | Qwen/Qwen3-32B | off | [open](variants/base-gateway-agentgateway-hpu-vllm-QwenQwen3-32B-off.md) |
+| base | gateway | agentgateway | hpu | vllm | Qwen/Qwen3-32B | on | [open](variants/base-gateway-agentgateway-hpu-vllm-QwenQwen3-32B-on.md) |
+| base | gateway | agentgateway | cpu | vllm | Qwen/Qwen3-32B | off | [open](variants/base-gateway-agentgateway-cpu-vllm-QwenQwen3-32B-off.md) |
+| base | gateway | agentgateway | cpu | vllm | Qwen/Qwen3-32B | on | [open](variants/base-gateway-agentgateway-cpu-vllm-QwenQwen3-32B-on.md) |
+| gke | standalone | none | gpu | vllm | Qwen/Qwen3-32B | off | [open](variants/gke-standalone-none-gpu-vllm-QwenQwen3-32B-off.md) |
+| gke | standalone | none | gpu | vllm | Qwen/Qwen3-32B | on | [open](variants/gke-standalone-none-gpu-vllm-QwenQwen3-32B-on.md) |
+| gke | standalone | none | gpu | vllm | openai/gpt-oss-120b | off | [open](variants/gke-standalone-none-gpu-vllm-openaigpt-oss-120b-off.md) |
+| gke | standalone | none | gpu | vllm | openai/gpt-oss-120b | on | [open](variants/gke-standalone-none-gpu-vllm-openaigpt-oss-120b-on.md) |
+| gke | standalone | none | gpu | sglang | Qwen/Qwen3-32B | off | [open](variants/gke-standalone-none-gpu-sglang-QwenQwen3-32B-off.md) |
+| gke | standalone | none | gpu | sglang | Qwen/Qwen3-32B | on | [open](variants/gke-standalone-none-gpu-sglang-QwenQwen3-32B-on.md) |
+| gke | standalone | none | gpu | trtllm | Qwen/Qwen3-32B | off | [open](variants/gke-standalone-none-gpu-trtllm-QwenQwen3-32B-off.md) |
+| gke | standalone | none | gpu | trtllm | Qwen/Qwen3-32B | on | [open](variants/gke-standalone-none-gpu-trtllm-QwenQwen3-32B-on.md) |
+| gke | standalone | none | tpu/v6 | vllm | Qwen/Qwen3-32B | off | [open](variants/gke-standalone-none-tpuv6-vllm-QwenQwen3-32B-off.md) |
+| gke | standalone | none | tpu/v6 | vllm | Qwen/Qwen3-32B | on | [open](variants/gke-standalone-none-tpuv6-vllm-QwenQwen3-32B-on.md) |
+| gke | standalone | none | tpu/v7 | vllm | Qwen/Qwen3-32B | off | [open](variants/gke-standalone-none-tpuv7-vllm-QwenQwen3-32B-off.md) |
+| gke | standalone | none | tpu/v7 | vllm | Qwen/Qwen3-32B | on | [open](variants/gke-standalone-none-tpuv7-vllm-QwenQwen3-32B-on.md) |
+| gke | gateway | gke | gpu | vllm | Qwen/Qwen3-32B | off | [open](variants/gke-gateway-gke-gpu-vllm-QwenQwen3-32B-off.md) |
+| gke | gateway | gke | gpu | vllm | Qwen/Qwen3-32B | on | [open](variants/gke-gateway-gke-gpu-vllm-QwenQwen3-32B-on.md) |
+| gke | gateway | gke | gpu | vllm | openai/gpt-oss-120b | off | [open](variants/gke-gateway-gke-gpu-vllm-openaigpt-oss-120b-off.md) |
+| gke | gateway | gke | gpu | vllm | openai/gpt-oss-120b | on | [open](variants/gke-gateway-gke-gpu-vllm-openaigpt-oss-120b-on.md) |
+| gke | gateway | gke | gpu | sglang | Qwen/Qwen3-32B | off | [open](variants/gke-gateway-gke-gpu-sglang-QwenQwen3-32B-off.md) |
+| gke | gateway | gke | gpu | sglang | Qwen/Qwen3-32B | on | [open](variants/gke-gateway-gke-gpu-sglang-QwenQwen3-32B-on.md) |
+| gke | gateway | gke | gpu | trtllm | Qwen/Qwen3-32B | off | [open](variants/gke-gateway-gke-gpu-trtllm-QwenQwen3-32B-off.md) |
+| gke | gateway | gke | gpu | trtllm | Qwen/Qwen3-32B | on | [open](variants/gke-gateway-gke-gpu-trtllm-QwenQwen3-32B-on.md) |
+| gke | gateway | gke | tpu/v6 | vllm | Qwen/Qwen3-32B | off | [open](variants/gke-gateway-gke-tpuv6-vllm-QwenQwen3-32B-off.md) |
+| gke | gateway | gke | tpu/v6 | vllm | Qwen/Qwen3-32B | on | [open](variants/gke-gateway-gke-tpuv6-vllm-QwenQwen3-32B-on.md) |
+| gke | gateway | gke | tpu/v7 | vllm | Qwen/Qwen3-32B | off | [open](variants/gke-gateway-gke-tpuv7-vllm-QwenQwen3-32B-off.md) |
+| gke | gateway | gke | tpu/v7 | vllm | Qwen/Qwen3-32B | on | [open](variants/gke-gateway-gke-tpuv7-vllm-QwenQwen3-32B-on.md) |
+| gke | gateway | istio | gpu | vllm | Qwen/Qwen3-32B | off | [open](variants/gke-gateway-istio-gpu-vllm-QwenQwen3-32B-off.md) |
+| gke | gateway | istio | gpu | vllm | Qwen/Qwen3-32B | on | [open](variants/gke-gateway-istio-gpu-vllm-QwenQwen3-32B-on.md) |
+| gke | gateway | istio | gpu | vllm | openai/gpt-oss-120b | off | [open](variants/gke-gateway-istio-gpu-vllm-openaigpt-oss-120b-off.md) |
+| gke | gateway | istio | gpu | vllm | openai/gpt-oss-120b | on | [open](variants/gke-gateway-istio-gpu-vllm-openaigpt-oss-120b-on.md) |
+| gke | gateway | istio | gpu | sglang | Qwen/Qwen3-32B | off | [open](variants/gke-gateway-istio-gpu-sglang-QwenQwen3-32B-off.md) |
+| gke | gateway | istio | gpu | sglang | Qwen/Qwen3-32B | on | [open](variants/gke-gateway-istio-gpu-sglang-QwenQwen3-32B-on.md) |
+| gke | gateway | istio | gpu | trtllm | Qwen/Qwen3-32B | off | [open](variants/gke-gateway-istio-gpu-trtllm-QwenQwen3-32B-off.md) |
+| gke | gateway | istio | gpu | trtllm | Qwen/Qwen3-32B | on | [open](variants/gke-gateway-istio-gpu-trtllm-QwenQwen3-32B-on.md) |
+| gke | gateway | istio | tpu/v6 | vllm | Qwen/Qwen3-32B | off | [open](variants/gke-gateway-istio-tpuv6-vllm-QwenQwen3-32B-off.md) |
+| gke | gateway | istio | tpu/v6 | vllm | Qwen/Qwen3-32B | on | [open](variants/gke-gateway-istio-tpuv6-vllm-QwenQwen3-32B-on.md) |
+| gke | gateway | istio | tpu/v7 | vllm | Qwen/Qwen3-32B | off | [open](variants/gke-gateway-istio-tpuv7-vllm-QwenQwen3-32B-off.md) |
+| gke | gateway | istio | tpu/v7 | vllm | Qwen/Qwen3-32B | on | [open](variants/gke-gateway-istio-tpuv7-vllm-QwenQwen3-32B-on.md) |
+| gke | gateway | agentgateway | gpu | vllm | Qwen/Qwen3-32B | off | [open](variants/gke-gateway-agentgateway-gpu-vllm-QwenQwen3-32B-off.md) |
+| gke | gateway | agentgateway | gpu | vllm | Qwen/Qwen3-32B | on | [open](variants/gke-gateway-agentgateway-gpu-vllm-QwenQwen3-32B-on.md) |
+| gke | gateway | agentgateway | gpu | vllm | openai/gpt-oss-120b | off | [open](variants/gke-gateway-agentgateway-gpu-vllm-openaigpt-oss-120b-off.md) |
+| gke | gateway | agentgateway | gpu | vllm | openai/gpt-oss-120b | on | [open](variants/gke-gateway-agentgateway-gpu-vllm-openaigpt-oss-120b-on.md) |
+| gke | gateway | agentgateway | gpu | sglang | Qwen/Qwen3-32B | off | [open](variants/gke-gateway-agentgateway-gpu-sglang-QwenQwen3-32B-off.md) |
+| gke | gateway | agentgateway | gpu | sglang | Qwen/Qwen3-32B | on | [open](variants/gke-gateway-agentgateway-gpu-sglang-QwenQwen3-32B-on.md) |
+| gke | gateway | agentgateway | gpu | trtllm | Qwen/Qwen3-32B | off | [open](variants/gke-gateway-agentgateway-gpu-trtllm-QwenQwen3-32B-off.md) |
+| gke | gateway | agentgateway | gpu | trtllm | Qwen/Qwen3-32B | on | [open](variants/gke-gateway-agentgateway-gpu-trtllm-QwenQwen3-32B-on.md) |
+| gke | gateway | agentgateway | tpu/v6 | vllm | Qwen/Qwen3-32B | off | [open](variants/gke-gateway-agentgateway-tpuv6-vllm-QwenQwen3-32B-off.md) |
+| gke | gateway | agentgateway | tpu/v6 | vllm | Qwen/Qwen3-32B | on | [open](variants/gke-gateway-agentgateway-tpuv6-vllm-QwenQwen3-32B-on.md) |
+| gke | gateway | agentgateway | tpu/v7 | vllm | Qwen/Qwen3-32B | off | [open](variants/gke-gateway-agentgateway-tpuv7-vllm-QwenQwen3-32B-off.md) |
+| gke | gateway | agentgateway | tpu/v7 | vllm | Qwen/Qwen3-32B | on | [open](variants/gke-gateway-agentgateway-tpuv7-vllm-QwenQwen3-32B-on.md) |
+
+</details>
 
 ## Overview
 
