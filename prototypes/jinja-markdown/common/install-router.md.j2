@@ -1,0 +1,98 @@
+- Define the base `helm` values for the `llm-d` router (guide-specific values
+  in `ROUTER_VALUES` were set above):
+
+{% step %}
+export ROUTER_BASE_VALUES="-f ${REPO_ROOT}/guides/recipes/router/base.values.yaml"
+{% endstep %}
+
+{% if monitoring == "off" %}
+{% step group="monitoring-values" %}
+export MONITORING_VALUES=""
+{% endstep %}
+{% else %}
+- Enable `Prometheus Monitoring` on the router (requires the
+  [Monitoring stack](../../docs/operations/observability/setup.md)):
+
+{% step group="monitoring-values" %}
+export MONITORING_VALUES="-f ${REPO_ROOT}/guides/recipes/router/features/monitoring.values.yaml"
+{% endstep %}
+{% endif %}
+
+{% if router_mode == "standalone" %}
+This deploys the llm-d Router in
+[Standalone Mode](../../docs/architecture/core/router/proxy.md):
+
+{% step id="install-router", tags="dry-run=skip" %}
+helm install ${GUIDE_NAME} \
+  ${ROUTER_STANDALONE_CHART} \
+  ${ROUTER_BASE_VALUES} \
+  ${MONITORING_VALUES} \
+  ${ROUTER_VALUES} \
+  -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
+{% endstep %}
+{% step tags="e2e=skip", hide=true %}
+helm template ${GUIDE_NAME} \
+  ${ROUTER_STANDALONE_CHART} \
+  ${ROUTER_BASE_VALUES} \
+  ${MONITORING_VALUES} \
+  ${ROUTER_VALUES} \
+  --version ${ROUTER_CHART_VERSION} > /dev/null
+{% endstep %}
+{% else %}
+This uses a Kubernetes Gateway managed proxy rather than the standalone
+router, with the **{{ gateway_provider }}** Gateway implementation (your
+pick in the configuration above; see the
+[gateway guides](../../docs/infrastructure/gateway) for provider specifics).
+Install the Gateway:
+
+{% step tags="dry-run=skip" %}
+helm upgrade -i ${GATEWAY_NAME} ${REPO_ROOT}/guides/recipes/gateway/ \
+  --set gateway.name=${GATEWAY_NAME} \
+  --set gateway.class=${GATEWAY_PROVIDER} \
+  -n ${NAMESPACE}
+{% endstep %}
+{% step tags="e2e=skip", hide=true %}
+helm template ${GATEWAY_NAME} ${REPO_ROOT}/guides/recipes/gateway/ \
+  --set gateway.name=${GATEWAY_NAME} \
+  --set gateway.class=${GATEWAY_PROVIDER} > /dev/null
+{% endstep %}
+
+Wait for the Gateway to be programmed:
+
+{% step tags="dry-run=skip" %}
+kubectl wait --for=condition=Programmed gateway/${GATEWAY_NAME} \
+  -n ${NAMESPACE} --timeout=300s
+{% endstep %}
+
+Then deploy the llm-d router and an HTTPRoute that connects it to the Gateway:
+
+{% step id="install-router", tags="dry-run=skip" %}
+helm install ${GUIDE_NAME} \
+  ${ROUTER_GATEWAY_CHART} \
+  ${ROUTER_BASE_VALUES} \
+  ${MONITORING_VALUES} \
+  ${ROUTER_VALUES} \
+  --set provider.name=${GATEWAY_PROVIDER} \
+  --set httpRoute.create=true \
+  --set httpRoute.inferenceGatewayName=${GATEWAY_NAME} \
+  -n ${NAMESPACE} --version ${ROUTER_CHART_VERSION}
+{% endstep %}
+{% step tags="e2e=skip", hide=true %}
+helm template ${GUIDE_NAME} \
+  ${ROUTER_GATEWAY_CHART} \
+  ${ROUTER_BASE_VALUES} \
+  ${MONITORING_VALUES} \
+  ${ROUTER_VALUES} \
+  --set provider.name=${GATEWAY_PROVIDER} \
+  --set httpRoute.create=true \
+  --set httpRoute.inferenceGatewayName=${GATEWAY_NAME} \
+  --version ${ROUTER_CHART_VERSION} > /dev/null
+{% endstep %}
+{% endif %}
+
+Wait for the router rollout to complete before continuing:
+
+{% step tags="dry-run=skip" %}
+kubectl rollout status deployment -l app.kubernetes.io/instance=${GUIDE_NAME} \
+  -n ${NAMESPACE} --timeout=300s
+{% endstep %}

@@ -1,0 +1,25 @@
+- Uninstall the llm-d router:
+
+{% step tags="dry-run=skip" %}
+helm uninstall ${GUIDE_NAME} -n ${NAMESPACE}
+{% endstep %}
+
+- Remove the model server resources (same `KUSTOMIZE_DIR` used to install):
+
+{% step tags="dry-run=skip" %}
+kubectl delete -n ${NAMESPACE} -k ${KUSTOMIZE_DIR} --ignore-not-found=true
+{% endstep %}
+
+{% if monitoring == "on" %}
+- Remove the monitoring resources:
+
+{% step tags="dry-run=skip" %}
+kubectl delete -n ${NAMESPACE} -k ${REPO_ROOT}/guides/recipes/modelserver/components/monitoring --ignore-not-found=true
+{% endstep %}
+
+{% endif %}
+- Delete the namespace:
+
+{% step tags="dry-run=skip" %}
+kubectl delete namespace ${NAMESPACE}
+{% endstep %}

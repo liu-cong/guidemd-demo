@@ -1,0 +1,35 @@
+Apply the Kustomize overlay selected above (`KUSTOMIZE_DIR` — the same
+variable tears the model server down in Cleanup):
+
+{% step id="apply-modelserver", tags="dry-run=skip" %}
+kubectl apply -n ${NAMESPACE} -k ${KUSTOMIZE_DIR}
+{% endstep %}
+{% step tags="e2e=skip", hide=true %}
+kubectl kustomize ${KUSTOMIZE_DIR} > /dev/null
+{% endstep %}
+
+Model servers pull the model on first start, which can take a while. Wait for
+all pods to become ready:
+
+{% step tags="dry-run=skip" %}
+kubectl wait --for=condition=Ready pod \
+  -l llm-d.ai/inferenceServing=true \
+  -n ${NAMESPACE} --timeout=1800s
+{% endstep %}
+
+{% if monitoring == "on" %}
+#### Enable monitoring for model servers
+
+- Install the [Monitoring stack](../../docs/operations/observability/setup.md)
+  if not already present; `Prometheus Monitoring` was enabled on the router
+  via `MONITORING_VALUES` above.
+
+- Deploy the monitoring resources for model servers:
+
+{% step tags="dry-run=skip" %}
+kubectl apply -n ${NAMESPACE} -k ${REPO_ROOT}/guides/recipes/modelserver/components/monitoring
+{% endstep %}
+{% step tags="e2e=skip", hide=true %}
+kubectl kustomize ${REPO_ROOT}/guides/recipes/modelserver/components/monitoring > /dev/null
+{% endstep %}
+{% endif %}

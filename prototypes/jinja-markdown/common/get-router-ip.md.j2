@@ -1,0 +1,13 @@
+{% if router_mode == "standalone" %}
+**Standalone Mode**
+
+{% step tags="dry-run=skip", group="router-ip" %}
+export IP=$(kubectl get service ${GUIDE_NAME}-epp -n ${NAMESPACE} -o jsonpath='{.spec.clusterIP}')
+{% endstep %}
+{% else %}
+**Gateway Mode**
+
+{% step tags="dry-run=skip", group="router-ip" %}
+export IP=$(kubectl get gateway ${GATEWAY_NAME} -n ${NAMESPACE} -o jsonpath='{.status.addresses[0].value}')
+{% endstep %}
+{% endif %}
