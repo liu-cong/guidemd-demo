@@ -62,7 +62,7 @@ tests/            ──▶ compiler test suite (python3 -m unittest discover -s
    else's prose; now a dimension owner writes their `when` blocks and
    fragments in isolation. For readers, the same declaration produces a
    contextual guide — only their configuration, no distraction.
-8. **Compose, don't copy.** Shared sections (prereqs, install router,
+7. **Compose, don't copy.** Shared sections (prereqs, install router,
    verification, benchmark, cleanup) are `import`ed fragments with
    parameters; fragments import fragments, and headings re-base to their
    host section depth automatically.

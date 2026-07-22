@@ -4,6 +4,51 @@ One source of truth per guide. Everything else — the docs pages, the GitHub
 reading copy, the CI runs, the job matrix — is derived from it and can never
 drift from it.
 
+## Requirements
+
+The canonical statement lives in
+[`prototypes/annotated-markdown/`](prototypes/annotated-markdown/#requirements);
+in summary, by persona:
+
+**Guide readers**
+- An **interactive, contextual guide** on llm-d.ai: pick your configuration
+  in dimension order, see only the steps that apply, share it as a URL —
+  invalid combinations must not even be selectable.
+- Still a **readable guide on GitHub or in a local editor** — no HTML, no
+  tooling required to follow it.
+
+**CI/CD**
+- Automatically **derive an executable, verifiable run** from the guide for
+  any supported dimension combination — docs and CI can never drift.
+- **Affordable on every PR**: dry-run validation by default; full e2e per
+  tested matrix cell on a schedule or on demand.
+
+**Guide writers**
+- **Plain markdown must remain valid** (migration, experiments).
+- Common sections **maintained once**, imported everywhere.
+
+## Design principles
+
+1. **One authored source** per guide — no forks per dimension value, no
+   parallel docs to keep in sync.
+2. **Plain markdown is still a guide** — nothing is executable until the
+   first step marker appears; migration is incremental.
+3. **Everything else is generated** — readers and CI consume derived
+   artifacts; `validate` blocks any PR where they'd drift.
+4. **Explicitly executable** — a step marker is how CI finds scripts; an
+   unmarked bash block fails validation, and step tags are declared, so no
+   command is published untested and no typo silently changes what CI runs.
+5. **CI is just a special user** — it runs steps top to bottom like a human
+   and interprets no semantics; dry-run vs e2e are just different users
+   skipping different tags.
+6. **Dimensions serve the writer AND the reader** — a dimension owner
+   writes their branches in isolation; the same declaration gives readers a
+   contextual guide with zero distraction.
+7. **Compose, don't copy** — shared sections are imported fragments with
+   parameters.
+
+## The prototypes
+
 This repo holds **three prototypes**: a snapshot of the upstream community
 proposal ([`prototypes/pr1988-guide-yaml/`](prototypes/pr1988-guide-yaml/)
 — [llm-d/llm-d#1988](https://github.com/llm-d/llm-d/pull/1988), the
