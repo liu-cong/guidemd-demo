@@ -4,8 +4,15 @@ One source of truth per guide. Everything else — the docs pages, the GitHub
 reading copy, the CI runs, the job matrix — is derived from it and can never
 drift from it.
 
-This repo holds **two working prototypes of that idea**, built on the same
-requirements and validated against each other. They differ in one
+This repo holds **three prototypes**: a snapshot of the upstream community
+proposal ([`prototypes/pr1988-guide-yaml/`](prototypes/pr1988-guide-yaml/)
+— [llm-d/llm-d#1988](https://github.com/llm-d/llm-d/pull/1988), the
+yaml-source/rendered-README baseline this work builds on), and two
+successors built on the same requirements and validated against each
+other. The successors keep everything #1988 got right (derived docs, the
+validate/render/check triad, incremental adoption) and add the
+dimensions/rules/ci matrix, per-variant projection, and CI plans derived
+from the source instead of scraped from the README. They differ in one
 fundamental choice: *what the authored source is*.
 
 | | [`prototypes/annotated-markdown/`](prototypes/annotated-markdown/) | [`prototypes/jinja-markdown/`](prototypes/jinja-markdown/) |
@@ -66,6 +73,7 @@ python3 -m unittest discover -s tests -q
 
 ## Layout
 
+- [`prototypes/pr1988-guide-yaml/`](prototypes/pr1988-guide-yaml/) — verbatim snapshot of upstream [PR #1988](https://github.com/llm-d/llm-d/pull/1988): `guide.yaml` → rendered README, with the validate/render/check script triad
 - [`prototypes/annotated-markdown/`](prototypes/annotated-markdown/) — guidemd: one annotated `guide.template.md`, compiler, coverage gate vs upstream, 24 tests
-- [`prototypes/jinja-markdown/`](prototypes/jinja-markdown/) — guidegen: `guide.yaml` + `guide.md.j2` with inline `{% step %}` blocks, compiler, Docusaurus emitter, 24 tests incl. cross-prototype parity
+- [`prototypes/jinja-markdown/`](prototypes/jinja-markdown/) — guidegen: `guide.yaml` + `guide.md.j2` with inline `{% step %}` blocks, compiler package, Docusaurus emitter, 26 tests incl. cross-prototype parity
 - [`demo/slides.html`](demo/slides.html) — presentation deck (annotated-markdown prototype; open in a browser, arrow keys)
