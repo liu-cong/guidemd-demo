@@ -135,9 +135,9 @@ annotated-markdown prototype across 96 variants × 3 plan flavors
 `validate`:
 
 - **`readonly-guide.md`** — the default configuration, with a
-  **configuration table** right under the title: every supported
-  combination in a collapsed `<details>` block; the CI-tested rows link to
-  pre-rendered copies.
+  **configuration table** right under the title listing the CI-tested
+  configurations, each linking to its pre-rendered copy (plus a one-line
+  pointer to the website / `render --set` for the long tail).
 - **`variants/<slug>.md`** — one fully rendered guide per non-default
   **CI cell** (7 files), each personalized end to end and linking back to
   the index. Only CI-covered combinations are committed — they're the ones

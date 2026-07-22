@@ -35,26 +35,25 @@ def _config_table(guide):
     lines = [
         "## Configurations",
         "",
-        f"This document shows the **default configuration** ({short(default)}).",
-        f"CI-tested combinations have a pre-rendered guide; for the rest use",
-        "the interactive page or `guidegen.py render --set …`:",
-        "",
-        f"<details><summary><b>All {len(m.supported)} supported configurations"
-        f" ({len(m.ci)} CI-tested, pre-rendered)</b></summary>",
+        "This document shows the **default configuration**. Every CI-tested",
+        "configuration has a pre-rendered guide:",
         "",
         "| " + " | ".join(labels) + " | Guide |",
         "|" + "---|" * (len(labels) + 1),
     ]
-    for cell in m.supported:
+    for cell in m.ci:
         row = " | ".join(cell[d] for d in m.order)
         if cell == default:
             link = "**this document**"
-        elif cell in m.ci:
-            link = f"[open]({VARIANTS_DIR}/{variant_slug(cell, m.order)}.md)"
         else:
-            link = "–"
+            link = f"[open]({VARIANTS_DIR}/{variant_slug(cell, m.order)}.md)"
         lines.append(f"| {row} | {link} |")
-    lines += ["", "</details>"]
+    lines += [
+        "",
+        f"The other supported combinations ({len(m.supported) - len(m.ci)} of "
+        f"{len(m.supported)}) are served by the interactive page, or render "
+        "yours locally: `guidegen.py render <guide dir> --set dim=value …`.",
+    ]
     return "\n".join(lines)
 
 

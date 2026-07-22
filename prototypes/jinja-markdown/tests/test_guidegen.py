@@ -109,10 +109,12 @@ class PortedGuideTests(unittest.TestCase):
 
     def test_index_has_configuration_table(self):
         index = (GUIDE_DIR / "readonly-guide.md").read_text()
-        self.assertIn("All 96 supported configurations (8 CI-tested", index)
+        self.assertIn("## Configurations", index)
         self.assertIn("**this document**", index)
-        # only the non-default CI cells are linked to pre-rendered copies
+        self.assertNotIn("<details>", index)         # table is not collapsed
+        # only CI cells are listed: default + 7 linked pre-rendered copies
         self.assertEqual(index.count("](variants/"), 7)
+        self.assertIn("The other supported combinations (88 of 96)", index)
 
     def test_variant_files_only_for_ci_cells(self):
         files = list((GUIDE_DIR / "variants").glob("*.md"))
