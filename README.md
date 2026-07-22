@@ -16,7 +16,7 @@ fundamental choice: *what the authored source is*.
 | Conditionals / composition | invented directives, this compiler only | standard Jinja — known from Ansible/Helm/Hugo, editor-supported |
 | Step identity & provenance | positional; provenance hand-threaded through import expansion | optional `id=`; template `file:line` baked in by Jinja at parse time |
 | Exhaustiveness safety | heuristic warnings over adjacent `when` groups | explicit `group=` partition check + `{% else %}` makes gaps hard to write |
-| GitHub reading copy | one document, default path expanded, **all** alternatives in collapsed `<details>` | default document with a **configuration table** linking 95 pre-rendered `variants/*.md` — click your row, read your guide |
+| GitHub reading copy | one document, default path expanded, **all** alternatives in collapsed `<details>` | default document + **configuration table**; CI-tested rows link to pre-rendered `variants/*.md` (website serves all 96) |
 | Docusaurus story | chunk JSON → custom component (designed, not built) | **`emit-docusaurus` built**: per-variant static `.mdx` pages (default listed, rest `unlisted`), VariantSwitcher navigates between them |
 | Migration from existing guides | incremental — annotate a plain README step by step | conversion — turn a README into a template |
 | Dependencies | PyYAML | PyYAML + Jinja2 |

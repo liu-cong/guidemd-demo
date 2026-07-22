@@ -86,16 +86,19 @@ annotated-markdown prototype across 96 variants × 3 plan flavors
 
 - **`readonly-guide.md`** — the default configuration, with a
   **configuration table** right under the title: every supported
-  combination in a collapsed `<details>` block, each row linking to its
-  pre-rendered copy.
+  combination in a collapsed `<details>` block; the CI-tested rows link to
+  pre-rendered copies.
 - **`variants/<slug>.md`** — one fully rendered guide per non-default
-  combination (95 files), each personalized end to end and linking back to
-  the index. Orphaned variants (combinations that stop being supported)
-  are pruned on regeneration and flagged by the freshness check.
+  **CI cell** (7 files), each personalized end to end and linking back to
+  the index. Only CI-covered combinations are committed — they're the ones
+  the project can vouch for on GitHub, and it keeps diffs small; the
+  website (interactive page / Docusaurus output) still serves **all 96**.
+  Orphaned variants are pruned on regeneration and flagged by the
+  freshness check.
 
 So a reader who never leaves GitHub — or is browsing a local checkout with
 no Python — opens the table, clicks their row, and gets exactly their
-guide. Tool users can instead run
+guide; long-tail combinations go to the website or
 `./guidegen.py render guides/optimized-baseline --set accelerator=tpu/v6`.
 
 ## Docusaurus integration (`emit-docusaurus`)

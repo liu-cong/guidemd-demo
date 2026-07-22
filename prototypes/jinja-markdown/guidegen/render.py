@@ -1,10 +1,13 @@
 """Reading artifacts for GitHub / local checkouts.
 
   readonly-guide.md   the DEFAULT configuration, with a configuration table
-                      linking every other supported combination to its
-                      pre-rendered copy
-  variants/<slug>.md  one fully rendered guide per non-default supported
-                      combination — readable with zero tooling
+                      listing every supported combination; the CI-covered
+                      ones link to pre-rendered copies
+  variants/<slug>.md  one fully rendered guide per non-default CI cell —
+                      readable with zero tooling. Combinations outside the
+                      CI matrix are served by the website / `render --set`
+                      (the interactive page and Docusaurus output still
+                      cover all supported combinations).
 
 Everything is generated; `check()` reports staleness and orphans so the PR
 gate can enforce freshness.
@@ -33,10 +36,11 @@ def _config_table(guide):
         "## Configurations",
         "",
         f"This document shows the **default configuration** ({short(default)}).",
-        "Every supported combination has a pre-rendered guide:",
+        f"CI-tested combinations have a pre-rendered guide; for the rest use",
+        "the interactive page or `guidegen.py render --set …`:",
         "",
         f"<details><summary><b>All {len(m.supported)} supported configurations"
-        "</b></summary>",
+        f" ({len(m.ci)} CI-tested, pre-rendered)</b></summary>",
         "",
         "| " + " | ".join(labels) + " | Guide |",
         "|" + "---|" * (len(labels) + 1),
@@ -45,8 +49,10 @@ def _config_table(guide):
         row = " | ".join(cell[d] for d in m.order)
         if cell == default:
             link = "**this document**"
-        else:
+        elif cell in m.ci:
             link = f"[open]({VARIANTS_DIR}/{variant_slug(cell, m.order)}.md)"
+        else:
+            link = "–"
         lines.append(f"| {row} | {link} |")
     lines += ["", "</details>"]
     return "\n".join(lines)
@@ -74,10 +80,15 @@ def render_variant(guide, cell):
 
 
 def expected(guide):
-    """{path: content} for every reading artifact of this guide."""
+    """{path: content} for every reading artifact of this guide.
+
+    Pre-rendered variants are committed only for the CI-covered cells —
+    the website surfaces (render-html / emit-docusaurus) still cover all
+    supported combinations.
+    """
     out = {Path(guide.dir) / RENDERED_MD: render_index(guide)}
     default = guide.matrix.default_cell()
-    for cell in guide.matrix.supported:
+    for cell in guide.matrix.ci:
         if cell == default:
             continue
         slug = variant_slug(cell, guide.matrix.order)

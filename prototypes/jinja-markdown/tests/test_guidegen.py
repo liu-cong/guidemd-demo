@@ -109,14 +109,14 @@ class PortedGuideTests(unittest.TestCase):
 
     def test_index_has_configuration_table(self):
         index = (GUIDE_DIR / "readonly-guide.md").read_text()
-        self.assertIn("All 96 supported configurations", index)
+        self.assertIn("All 96 supported configurations (8 CI-tested", index)
         self.assertIn("**this document**", index)
-        # every non-default variant is linked exactly once
-        self.assertEqual(index.count("](variants/"), 95)
+        # only the non-default CI cells are linked to pre-rendered copies
+        self.assertEqual(index.count("](variants/"), 7)
 
-    def test_variant_files_complete_and_readable(self):
+    def test_variant_files_only_for_ci_cells(self):
         files = list((GUIDE_DIR / "variants").glob("*.md"))
-        self.assertEqual(len(files), 95)
+        self.assertEqual(len(files), 7)
         tpu = (GUIDE_DIR / "variants" /
                "gke-standalone-none-tpuv6-vllm-QwenQwen3-32B-off.md").read_text()
         self.assertIn("**Configuration:** infra_provider=gke", tpu)
@@ -261,11 +261,13 @@ class UnitTests(unittest.TestCase):
         self.assertTrue(any("bash -n" in e for e in self.errs(g)))
 
     def test_variants_written_and_checked(self):
-        g = self.mkguide('# T\n\nvalue of a: {{ a }}\n')
+        ci = TWO_DIMS + "ci:\n  - { a: x, b: p }\n  - { a: y, b: q }\n"
+        g = self.mkguide('# T\n\nvalue of a: {{ a }}\n', yaml_text=ci)
         self.assertEqual(self.errs(g), [])
         self.assertTrue(render.check(g))            # nothing written yet
         written, total, pruned = render.write(g)
-        self.assertEqual((written, total, pruned), (4, 4, 0))  # index + 3
+        # index + one variant: only CI cells are pre-rendered (default is CI)
+        self.assertEqual((written, total, pruned), (2, 2, 0))
         self.assertEqual(render.check(g), [])
         # orphan detection: plant a stray variant file
         stray = self.gdir / "variants" / "stray.md"
