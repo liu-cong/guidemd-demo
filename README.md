@@ -99,15 +99,14 @@ Our asks:
 
 ## The prototypes
 
-Three PoCs: a snapshot of the upstream community proposal
+Three PoCs: a snapshot of 
 ([`prototypes/pr1988-guide-yaml/`](prototypes/pr1988-guide-yaml/) —
-[llm-d/llm-d#1988](https://github.com/llm-d/llm-d/pull/1988), the
-yaml-source/rendered-README baseline this work builds on), and two
-successors built on the requirements above and validated against each other
-(identical supported matrices and per-cell step counts, enforced by a
-[parity suite](prototypes/jinja-markdown/tests/test_guidegen.py)). The
-successors keep everything #1988 got right and differ in one fundamental
-choice: *what the authored source is* — annotated plain markdown
+[llm-d/llm-d#1988](https://github.com/llm-d/llm-d/pull/1988), focusing on rendering
+the Markdown guide and CI run from a single guide.yaml source containing runnable steps.
+It serves the "CI" persona requirements only and doesn't touch the guide prose.
+
+The two successors built on the requirements above and extended to support dynamic prose rendering and 
+reusable imports. They differ in *what the authored source is* — annotated plain markdown
 ([`prototypes/annotated-markdown/`](prototypes/annotated-markdown/)) vs. a
 Jinja2 template + data file
 ([`prototypes/jinja-markdown/`](prototypes/jinja-markdown/)).
@@ -116,26 +115,70 @@ Jinja2 template + data file
 
 | Requirement | [`pr1988-guide-yaml`](prototypes/pr1988-guide-yaml/) (baseline) | [`annotated-markdown`](prototypes/annotated-markdown/) | [`jinja-markdown`](prototypes/jinja-markdown/) |
 | --- | --- | --- | --- |
-| **Reader P0** · interactive contextual guide | ✖ — one union README for every configuration | ✔ picker page (chunk-based, rendered client-side); Docusaurus integration designed, not built | ✔ picker page + **`emit-docusaurus` built**: per-variant static pages, switcher navigates between them |
-| **Reader P0** · configuration ↔ test status | ✖ | ✔ CI-tested badge per picked variant; E2E badges generated from the `ci:` matrix | ✔ CI-tested badge in the picker + CI column in the configuration table *(benchmark results / known-issues linkage: future work in all three)* |
-| **Reader P1** · readable on GitHub / locally | rendered union README with *"comment out / uncomment"* blocks | authored file readable as-is, plus a generated doc with **all** alternatives in collapsed `<details>` | generated default doc + configuration table linking pre-rendered guides for the CI-tested cells |
-| **Writer P0** · dimension-specific content without noise | `when:` on bash steps only — prose cannot vary | `<!-- when -->` regions over prose and code | `{% if %}` over anything; `{% else %}` makes coverage gaps hard to write |
-| **Writer P1** · common sections maintained once | ✖ none | `<!-- import -->` fragments with parameters, automatic heading re-basing | `{% include %}` partials (Jinja macros where parameters are needed) |
-| **CI P0** · derived executable, verifiable runs | partial — CI still scrapes the README in places | `plan` derived from the source; steps tagged, tag keys declared | `plan` is the *same render* as the docs; stable step ids + template `file:line` provenance |
-| **CI P1** · affordable per-PR validation | schema + drift check only; no dry-run tier | cluster-free dry-run per matrix cell + scheduled e2e | cluster-free dry-run per matrix cell + scheduled e2e |
+| **Reader P0** · interactive contextual guide | ✖ | ✔ | ✔ |
+| **Reader P0** · configuration ↔ test status | ✖ | ✔ | ✔  |
+| **Reader P1** · readable on GitHub / locally |  ✔ (similar to today) |  ✔ (similar to today) |  ✔(but needs a CI job to pre generate readable markdowns) |
+| **Writer P0** · dimension-specific content without noise | ✖  `when:` on bash steps only — prose cannot vary | ✔ `<!-- when -->` regions over prose and code | ✔ `{% if %}` over anything; `{% else %}` makes coverage gaps hard to write |
+| **Writer P1** · common sections maintained once | ✖ none | ✔ `<!-- import -->` fragments with parameters, automatic heading re-basing | ✔ `{% include %}` partials (Jinja macros where parameters are needed) |
+| **CI P0** · derived executable, verifiable runs | ✔ | ✔ `plan` derived from the source; steps tagged, tag keys declared | ✔ `plan` is the *same render* as the docs; stable step ids + template `file:line` provenance |
+| **CI P1** · affordable per-PR validation | ✔ (can be extended to support dry-run) | ✔  | ✔  |
 
 ### Other trade-offs
 
 | | `pr1988-guide-yaml` (baseline) | `annotated-markdown` | `jinja-markdown` |
 | --- | --- | --- | --- |
 | Source of truth | `guide.yaml` (bash steps as YAML data) + a shared README template | **one plain-markdown file** with invisible comment directives (`when` / `import` / `step`) | **one Jinja2 template** + `guide.yaml`: `{% if %}` / `{% include %}` / inline `{% step %}` blocks |
-| Authored file readable as-is | ✖ — YAML isn't a doc; readers get the rendered README | ✔ — renders on GitHub; zero annotations = valid guide | prose reads fine, but it's a template — readers get generated artifacts |
 | Parser to maintain | ~800 lines across the validate/render/check script triad | ~300 lines of bespoke document parsing (fences, comments, provenance) | **none** — Jinja parses everything, incl. the `{% step %}` tag via Jinja's extension API |
-| Syntax familiarity | plain YAML, custom schema | invented directives, this compiler only | standard Jinja — known from Ansible/Helm/Hugo, editor-supported |
+| Syntax familiarity | plain YAML, custom schema | custom invisible comment directives (`when` / `import` / `step`) | standard Jinja — known from Ansible/Helm/Hugo, editor-supported |
 | Step identity & provenance | named sections + step position in the YAML | positional; provenance hand-threaded through import expansion | optional `id=`; template `file:line` baked in by Jinja at parse time |
-| Exhaustiveness safety | none — no dimensions/rules matrix | heuristic warnings over adjacent `when` groups | explicit `group=` partition check + `{% else %}` |
-| Migration of existing guides | move each README's bash into `guide.yaml` | incremental — annotate a plain README step by step | conversion — turn a README into a template |
-| Dependencies | PyYAML | PyYAML | PyYAML + Jinja2 |
+| Authoring flow | two files: write runs in YAML, then place them into the README — tedious for a 20-step guide, though scriptable | single file — steps written in-place in the narrative | single file — steps written in-place in the narrative |
+| Steps as structured data | ✔ inherent — key/value YAML, easy to parse/lint and feed to downstream consumers directly | derived — compiler emits the plan as yaml/json/bash | derived — render emits the plan as yaml/json/bash |
+| CI overrides & dry-run extension | natural per-step fields: a run can carry its dry-run variant; values or whole blocks substitutable per combination by key | `dry-run=skip` tags + hidden stand-in steps; value substitution via `{{ dim }}` | same tag convention; values via dimensions-as-env-vars (`configure` step) or `{{ }}` |
+| Validation of step content | schema validation + YAML↔markdown cross-check for idempotency | fence policing, declared tags, freshness gate | fence policing, declared tags, group partition check, `StrictUndefined`, `bash -n`, freshness gate |
+
+### The fundamental split: YAML-source vs markdown-source
+
+Behind the table sits one philosophical fork — where do the runnable steps
+live?
+
+**Where the YAML approach wins**
+
+- Runnable steps are *born* structured: a plain key/value file that is easy
+  to parse, lint, schema-validate, and feed to downstream consumers (CI)
+  directly — with independent validation of YAML and markdown plus a
+  cross-check between them for idempotency.
+- Per-step extension is natural: a run step can carry its dry-run variant,
+  and CI can override simple values or whole blocks per combination by key.
+- Multiple machine viewpoints for free: execution-only YAML, or a fully
+  annotated generated script.
+
+**Where the markdown approach wins**
+
+- Single-file authoring: with 20 steps, writing each run in YAML and then
+  finding the right insertion point back in the markdown is a constant
+  context switch; in markdown the step is written where it belongs in the
+  narrative.
+- Conditions apply to **any block, not just runnable steps** — conditional
+  prose is a writer P0, and a YAML-side `when:` can never reach prose.
+- The generated picker page presents the supported combinations statically —
+  readers see their configuration instead of deciphering conditionals
+  themselves.
+
+**Costs both sides pay, and how the PoCs respond**
+
+- Every option invents *something*: the YAML approach invents a schema (a
+  language expressed in data); annotated-markdown invents comment directives
+  plus a parser; jinja-markdown avoids owning a parser but still defines
+  conventions (`{% step %}`, tags, groups).
+- "Markdown can't override by key/value" — true for annotated-markdown as
+  built; the jinja PoC substitutes values via dimensions-as-env-vars and
+  `{{ }}`, and block-level substitution is an `{% if %}` branch.
+- "Markdown lacks reproducibility validation" — partially answered by the
+  current gates (fence policing, group partitions, `bash -n`, artifact
+  freshness); schema-level validation of step *content* remains a genuine
+  YAML strength.
+- "Placing YAML step ids into a long README is tedious" — scriptable in
+  principle, but it stays a two-file workflow.
 
 ## Quick start
 
