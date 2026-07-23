@@ -15,58 +15,6 @@ check_coverage.py ──▶ "no loss of information" gate vs the upstream guide
 tests/            ──▶ compiler test suite (python3 -m unittest discover -s tests)
 ```
 
-## Requirements
-
-**For guide readers**
-- An **interactive, contextual guide** on llm-d.ai: pick your configuration in
-  dimension order, see only the steps that apply, share it as a URL. Invalid
-  combinations must not be selectable.
-- Still a **readable guide on GitHub or in a local editor** — no HTML, no
-  tooling required to follow it.
-
-**For CI/CD**
-- Automatically **derive an executable, verifiable run** from the guide for
-  any supported dimension combination — docs and CI can never drift.
-- **Affordable on every PR**: dry-run validation by default; full e2e per
-  tested matrix cell on a schedule or on demand.
-
-**For guide writers**
-- **Plain markdown must remain valid** (for migration, experiments, etc.).
-- Common sections **maintained once**, imported everywhere.
-
-## Design principles
-
-1. **One authored source.** A guide is exactly one `guide.template.md`. No
-   forks per dimension value, no parallel docs to keep in sync.
-2. **Plain markdown is still a guide.** A file with no front matter and no
-   markers validates and renders — nothing is executable until the first
-   `<!-- step -->` appears. Migration is incremental; a new experimental
-   guide starts as plain markdown and earns annotations as it stabilizes.
-3. **Everything else is generated.** Readers and CI consume derived
-   artifacts; `validate` blocks any PR where they'd drift from the source.
-4. **Explicitly executable.** A `<!-- step -->` marker on a bash block is how
-   CI finds scripts. A bash block *without* one fails validation (once the
-   guide has any steps) — no command is published untested by accident. Step
-   metadata keys must be declared in `step_tags:`; `validate` additionally
-   warns (non-fatally) about `when` regions no supported combination can
-   enter, and about groups of adjacent `when` branches that leave some
-   supported combination matching no branch — the trap where adding a
-   dimension value later silently drops commands from that variant.
-5. **CI is just a special user.** It reads the same guide and runs the steps
-   top to bottom, exactly like a human — it interprets no semantics.
-   Different CI flavors (dry-run, e2e) are just different users skipping
-   different opaque tags, the way a human skips the HF-token step they've
-   already done.
-6. **Dimensions serve the writer AND the reader.** For writers, adding
-   dimension-specific docs used to mean weaving branches through everyone
-   else's prose; now a dimension owner writes their `when` blocks and
-   fragments in isolation. For readers, the same declaration produces a
-   contextual guide — only their configuration, no distraction.
-7. **Compose, don't copy.** Shared sections (prereqs, install router,
-   verification, benchmark, cleanup) are `import`ed fragments with
-   parameters; fragments import fragments, and headings re-base to their
-   host section depth automatically.
-
 ## Three personas
 
 | Persona | What they touch | What they get |

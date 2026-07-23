@@ -125,60 +125,19 @@ Jinja2 template + data file
 
 ### Other trade-offs
 
-| | `pr1988-guide-yaml` (baseline) | `annotated-markdown` | `jinja-markdown` |
+| | `pr1988-guide-yaml` | `annotated-markdown` | `jinja-markdown` |
 | --- | --- | --- | --- |
 | Source of truth | `guide.yaml` (bash steps as YAML data) + a shared README template | **one plain-markdown file** with invisible comment directives (`when` / `import` / `step`) | **one Jinja2 template** + `guide.yaml`: `{% if %}` / `{% include %}` / inline `{% step %}` blocks |
 | Parser to maintain | ~800 lines across the validate/render/check script triad | ~300 lines of bespoke document parsing (fences, comments, provenance) | **none** — Jinja parses everything, incl. the `{% step %}` tag via Jinja's extension API |
-| Syntax familiarity | plain YAML, custom schema | custom invisible comment directives (`when` / `import` / `step`) | standard Jinja — known from Ansible/Helm/Hugo, editor-supported |
-| Step identity & provenance | named sections + step position in the YAML | positional; provenance hand-threaded through import expansion | optional `id=`; template `file:line` baked in by Jinja at parse time |
-| Authoring flow | two files: write runs in YAML, then place them into the README — tedious for a 20-step guide, though scriptable | single file — steps written in-place in the narrative | single file — steps written in-place in the narrative |
-| Steps as structured data | ✔ inherent — key/value YAML, easy to parse/lint and feed to downstream consumers directly | derived — compiler emits the plan as yaml/json/bash | derived — render emits the plan as yaml/json/bash |
-| CI overrides & dry-run extension | natural per-step fields: a run can carry its dry-run variant; values or whole blocks substitutable per combination by key | `dry-run=skip` tags + hidden stand-in steps; value substitution via `{{ dim }}` | same tag convention; values via dimensions-as-env-vars (`configure` step) or `{{ }}` |
-| Validation of step content | schema validation + YAML↔markdown cross-check for idempotency | fence policing, declared tags, freshness gate | fence policing, declared tags, group partition check, `StrictUndefined`, `bash -n`, freshness gate |
+| Authoring flow | two files: write runs in YAML, then place them into the README — can be tedious when there are many steps | single file — steps written in-place in the narrative | single file — steps written in-place in the narrative |
+| Runnable step structural integrity and ease of validation/link | strong | loose, relies on parsing `step` | same as 2 |
+| Runnable step extensibility | Natual to extend the yaml schema | Requires adding attributes to the `step`, doable but can grow ugly if there are too many attributes to add | |Same as 2|
 
-### The fundamental split: YAML-source vs markdown-source
-
-Behind the table sits one philosophical fork — where do the runnable steps
-live?
-
-**Where the YAML approach wins**
-
-- Runnable steps are *born* structured: a plain key/value file that is easy
-  to parse, lint, schema-validate, and feed to downstream consumers (CI)
-  directly — with independent validation of YAML and markdown plus a
-  cross-check between them for idempotency.
-- Per-step extension is natural: a run step can carry its dry-run variant,
-  and CI can override simple values or whole blocks per combination by key.
-- Multiple machine viewpoints for free: execution-only YAML, or a fully
-  annotated generated script.
-
-**Where the markdown approach wins**
-
-- Single-file authoring: with 20 steps, writing each run in YAML and then
-  finding the right insertion point back in the markdown is a constant
-  context switch; in markdown the step is written where it belongs in the
-  narrative.
-- Conditions apply to **any block, not just runnable steps** — conditional
-  prose is a writer P0, and a YAML-side `when:` can never reach prose.
-- The generated picker page presents the supported combinations statically —
-  readers see their configuration instead of deciphering conditionals
-  themselves.
-
-**Costs both sides pay, and how the PoCs respond**
 
 - Every option invents *something*: the YAML approach invents a schema (a
   language expressed in data); annotated-markdown invents comment directives
   plus a parser; jinja-markdown avoids owning a parser but still defines
   conventions (`{% step %}`, tags, groups).
-- "Markdown can't override by key/value" — true for annotated-markdown as
-  built; the jinja PoC substitutes values via dimensions-as-env-vars and
-  `{{ }}`, and block-level substitution is an `{% if %}` branch.
-- "Markdown lacks reproducibility validation" — partially answered by the
-  current gates (fence policing, group partitions, `bash -n`, artifact
-  freshness); schema-level validation of step *content* remains a genuine
-  YAML strength.
-- "Placing YAML step ids into a long README is tedious" — scriptable in
-  principle, but it stays a two-file workflow.
 
 ## Quick start
 
