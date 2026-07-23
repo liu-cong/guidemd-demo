@@ -7,29 +7,31 @@
 <style>
   :root { --accent: #7c3aed; --muted: #6b6b76; --border: #e2e2e8; }
   html, body { height: 100%; margin: 0; }
-  body { font: 20px/1.55 -apple-system, "Segoe UI", sans-serif; color: #1a1a22;
+  body { font: 19px/1.5 -apple-system, "Segoe UI", sans-serif; color: #1a1a22;
          display: flex; align-items: center; justify-content: center; background: #fafafa; }
-  .slide { display: none; width: min(920px, 88vw); padding: 3rem 3.5rem;
+  .slide { display: none; width: min(980px, 90vw); padding: 2.6rem 3.2rem;
            background: #fff; border: 1px solid var(--border); border-radius: 16px;
            box-shadow: 0 8px 40px rgba(0,0,0,.06); }
   .slide.active { display: block; }
   h1 { font-size: 2rem; margin: 0 0 .4rem; }
-  h2 { font-size: 1.4rem; margin: 0 0 1.2rem; color: var(--accent); }
+  h2 { font-size: 1.35rem; margin: 0 0 1rem; color: var(--accent); }
   .sub { color: var(--muted); }
   pre { background: #16161d; color: #e8e8f0; padding: 1rem 1.2rem; border-radius: 10px;
-        font-size: .72em; line-height: 1.5; overflow-x: auto; }
+        font-size: .7em; line-height: 1.5; overflow-x: auto; }
   code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-  li { margin: .45rem 0; }
-  table { border-collapse: collapse; font-size: .85em; }
-  th, td { border: 1px solid var(--border); padding: .5rem .8rem; text-align: left; }
+  li { margin: .4rem 0; }
+  table { border-collapse: collapse; font-size: .72em; width: 100%; }
+  th, td { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left;
+           vertical-align: top; }
   th { background: #faf9fd; }
   .foot { position: fixed; bottom: 1rem; right: 1.4rem; color: var(--muted);
           font-size: .75rem; }
   b.a { color: var(--accent); }
-  .principle { margin: .45rem 0; }
+  .ok { color: #15803d; } .no { color: #b45309; }
+  .principle { margin: .4rem 0; }
   .principle b { color: var(--accent); }
-  .ok { color: #15803d; }
-  .warn { color: #b45309; }
+  .cols { display: flex; gap: 2rem; }
+  .cols > div { flex: 1; }
 </style>
 </head>
 <body>
@@ -37,192 +39,199 @@
 <section class="slide active">
   <h1>guidemd</h1>
   <h2>Executable, dimension-aware guides for llm-d</h2>
-  <p>One authored markdown file per guide →</p>
+  <p>One source of truth per guide →</p>
   <ul>
-    <li>an <b class="a">interactive page</b> with configuration pickers (llm-d.ai)</li>
-    <li>a <b class="a">readable GitHub copy</b> — default path expanded with real values,
-        alternatives collapsed</li>
-    <li>an <b class="a">executable CI run</b> for every tested configuration</li>
+    <li>an <b class="a">interactive page</b> on llm-d.ai — pick your configuration, read only your steps</li>
+    <li>a <b class="a">readable GitHub copy</b> with pre-rendered, CI-tested variants</li>
+    <li>an <b class="a">executable CI run</b> derived per configuration — docs and CI can't drift</li>
   </ul>
-  <p class="sub">Derived, never duplicated — so they can't drift. (→ / ← to navigate)</p>
+  <p class="sub">Requirements first, then three proof-of-concepts. (→ / ← to navigate)</p>
 </section>
 
 <section class="slide">
-  <h2>The problem</h2>
+  <h2>Background — today's pain points</h2>
   <ul>
-    <li>A guide varies along <b>7 dimensions</b>: infra provider, router mode,
-        gateway provider, accelerator, model server, model, monitoring —
-        one of them hiding in an env-var comment
-        (<code>export PROVIDER_NAME=gke # options: …</code>)</li>
-    <li>Today: one monolithic README — <i>"comment out the above and uncomment
-        the below"</i> — readers execute the branching in their heads</li>
-    <li>CI scrapes bash out of prose → <b>docs and CI drift</b></li>
-    <li>Prereqs / verification / benchmark sections <b>copy-pasted</b> across guides</li>
+    <li><b>Readers:</b> monolithic guides covering many dimensions (infra, accelerator,
+        model server…) distract users focused on one configuration — and answering
+        <i>"can I run PD disaggregation with RDMA on TPU using SGLang?"</i> or finding
+        its test results is hard</li>
+    <li><b>Writers:</b> large duplicated sections (router install, verification…) drift
+        apart over time; no structured way to add dimension-specific content
+        (e.g. a model streamer for GKE TPU) without cluttering every other config</li>
+    <li><b>CI:</b> no defined contract between guide and pipeline — "magical parsing"
+        of READMEs breaks on guide edits and gets patched by hand</li>
   </ul>
 </section>
 
 <section class="slide">
   <h2>Requirements</h2>
+  <p class="sub">P0 = required · P1 = highly desirable, negotiable</p>
   <table>
-    <tr><th>Reader</th>
-        <td>interactive, contextual guide — pickers in dimension order, invalid combos
-            unselectable, deep-linkable URLs — AND still readable on GitHub / local
-            editor with no tooling</td></tr>
-    <tr><th>CI/CD</th>
-        <td>derive an executable, <b>verifiable</b> run for any supported combination —
-            docs and CI can never drift; dry-run affordable on <b>every PR</b>
-            (no cluster needed), full e2e on the tested matrix</td></tr>
-    <tr><th>Writer</th>
-        <td>plain markdown stays valid (adopt incrementally, experiment freely);
-            common sections maintained once, imported everywhere</td></tr>
+    <tr><th>Guide readers</th>
+        <td><b>P0</b> interactive, contextual guide on llm-d.ai — select a configuration,
+            see curated applicable content; the same configuration links to test status,
+            benchmark results, known issues<br>
+            <b>P1</b> readable guide format on GitHub / local editors</td></tr>
+    <tr><th>Guide writers</th>
+        <td><b>P0</b> structured mechanism for dimension-specific content without
+            noise in irrelevant configurations<br>
+            <b>P1</b> common sections maintained once, imported as needed</td></tr>
+    <tr><th>llm-d CI</th>
+        <td><b>P0</b> automatically derive executable, verifiable runs for any supported
+            combination — no drift between docs and CI<br>
+            <b>P1</b> affordable on every PR: default dry-runs; full e2e per matrix cell
+            on a schedule / on demand</td></tr>
   </table>
+  <p class="sub"><b>Non-goals:</b> changing the llm-d installation process (solution is
+     agnostic to it) · highly customized installs — the focus is out-of-the-box
+     well-lit-path recipes with minimal customization.</p>
 </section>
 
 <section class="slide">
   <h2>Design principles</h2>
-  <div class="principle"><b>1 · One authored source.</b> Exactly one guide.template.md per guide — no forks per dimension value.</div>
-  <div class="principle"><b>2 · Everything else is generated.</b> Readers and CI consume derived artifacts; the PR gate blocks drift.</div>
-  <div class="principle"><b>3 · Explicitly executable.</b> A step marker is how CI finds scripts; an unmarked bash block fails validation; metadata keys are declared — a typo'd tag is an error, not a silent CI change.</div>
-  <div class="principle"><b>4 · CI is just a special user.</b> It runs steps top to bottom like a human; dry-run vs e2e are just different users skipping different opaque tags.</div>
-  <div class="principle"><b>5 · Constraints, not enumeration.</b> Ordered dimensions + 7 rules: 672 combos → 96 valid → 8 tested. Supported ≠ tested — the page shows which one you picked.</div>
-  <div class="principle"><b>6 · Compose, don't copy.</b> Shared sections are imported fragments with parameters; fragments import fragments.</div>
-  <div class="principle"><b>7 · Plain markdown is still a guide.</b> Zero annotations = valid guide; adopt incrementally, experiment freely.</div>
-  <div class="principle"><b>8 · Dimensions serve both sides.</b> Writers own a dimension in isolation; readers get a contextual guide with zero distraction.</div>
+  <div class="principle"><b>1 · Single source of truth.</b> No forks per dimension value, no parallel documentation tracks.</div>
+  <div class="principle"><b>2 · Automated generation.</b> Readers and CI consume derived artifacts; a validate gate blocks PRs on drift.</div>
+  <div class="principle"><b>3 · CI as a standard user.</b> CI executes guide steps sequentially, interpreting no custom semantics.</div>
+  <div class="principle"><b>4 · Structured guide dimensions.</b> Owners author branches in isolation; readers get a distraction-free contextual guide; CI configuration is auto-generated. All supported and CI-validated configurations are declarative.</div>
+  <div class="principle"><b>5 · Composition over duplication.</b> Shared sections are imported fragments with parameters.</div>
 </section>
 
 <section class="slide">
-  <h2>Three personas, one source</h2>
+  <h2>Design space — three PoCs, none perfect</h2>
+  <ul>
+    <li><b>pr1988-guide-yaml</b> (baseline) — the upstream proposal
+        (<a href="https://github.com/llm-d/llm-d/pull/1988">llm-d#1988</a>):
+        bash steps in <code>guide.yaml</code>, README rendered from a template</li>
+    <li><b>annotated-markdown</b> — one plain-markdown guide with invisible comment
+        directives (<code>when</code> / <code>import</code> / <code>step</code>);
+        a bespoke compiler projects variants and CI plans</li>
+    <li><b>jinja-markdown</b> — one Jinja2 template + <code>guide.yaml</code>;
+        inline <code>{% step %}</code> blocks; no document parser owned at all</li>
+  </ul>
+  <p class="sub">The two successors keep everything #1988 got right (derived docs, CI gate,
+     incremental adoption) and add the dimensions/rules/ci matrix. A parity suite proves
+     they describe the SAME guide: identical matrices and per-cell step counts across
+     96 variants × 3 plan flavors.</p>
+</section>
+
+<section class="slide">
+  <h2>Requirements coverage</h2>
   <table>
-    <tr><th>Persona</th><th>Touches</th><th>Gets</th></tr>
-    <tr><td><b>Writer</b></td>
-        <td>plain markdown + two statements (<code>when</code>, <code>import</code>)</td>
-        <td>a thin guide: env choices + 6 import lines + prose</td></tr>
-    <tr><td><b>Reader</b></td>
-        <td>readonly-guide.html / readonly-guide.md</td>
-        <td>pickers in dimension order, deep links,
-            <span class="ok">✓ CI-tested</span> / <span class="warn">⚠ supported</span>
-            per variant · GitHub copy with collapsible alternatives</td></tr>
-    <tr><td><b>CI</b></td>
-        <td><code>plan --set dim=value … --format yaml|bash</code></td>
-        <td>an executable, verifiable run — exactly what a human would type;
-            every step cites its source <code>file:line</code></td></tr>
+    <tr><th>Requirement</th><th>pr1988 (baseline)</th><th>annotated-md</th><th>jinja-md</th></tr>
+    <tr><td><b>Reader P0</b> interactive guide</td>
+        <td class="no">✖ one union README</td>
+        <td class="ok">✔ picker page (client-rendered chunks)</td>
+        <td class="ok">✔ picker + per-variant static pages (Docusaurus emitter built)</td></tr>
+    <tr><td><b>Reader P0</b> config ↔ test status</td>
+        <td class="no">✖</td>
+        <td class="ok">✔ CI-tested badge + generated E2E badges</td>
+        <td class="ok">✔ CI-tested badge + CI column in config table</td></tr>
+    <tr><td><b>Reader P1</b> GitHub / local</td>
+        <td>union README, "uncomment the below"</td>
+        <td class="ok">authored file + all-variants doc (collapsed details)</td>
+        <td>default doc + table linking CI-tested variants</td></tr>
+    <tr><td><b>Writer P0</b> dimension-specific content</td>
+        <td>bash-only <code>when:</code>; prose can't vary</td>
+        <td class="ok"><code>when</code> regions over prose + code</td>
+        <td class="ok"><code>{% if %}</code> over anything</td></tr>
+    <tr><td><b>Writer P1</b> shared sections</td>
+        <td class="no">✖</td>
+        <td class="ok">import fragments + params</td>
+        <td class="ok">include partials / macros</td></tr>
+    <tr><td><b>CI P0</b> derived runs</td>
+        <td>partial — still scrapes README</td>
+        <td class="ok">✔ plan from source</td>
+        <td class="ok">✔ plan = the same render as the docs</td></tr>
+    <tr><td><b>CI P1</b> affordable PR gate</td>
+        <td>drift check only</td>
+        <td class="ok">✔ cluster-free dry-run + nightly e2e</td>
+        <td class="ok">✔ cluster-free dry-run + nightly e2e</td></tr>
   </table>
-  <p class="sub">Multiple writers: fragments + <code>when</code> regions map ownership to files → CODEOWNERS.</p>
+  <p class="sub">Benchmark-results / known-issues linkage: future work in all three.</p>
 </section>
 
 <section class="slide">
-  <h2>The entire syntax</h2>
-<pre>&lt;!-- when accelerator=gpu model=Qwen/Qwen3-32B --&gt;   conditional region; nestable
-…prose and/or code…                                  k=v1|v2 for multi-value
-&lt;!-- end --&gt;
-
-&lt;!-- import ../common/verify.md key=value --&gt;        shared fragment, one line
-
-&lt;!-- step --&gt;                                        next ```bash fence is a step
-&lt;!-- step ci=skip --&gt;                                metadata: values opaque,
-                                                     keys declared in step_tags:
-&lt;!-- step e2e=skip hide=true --&gt;                     hidden dry-run stand-in
-
-&lt;!-- badges --&gt;                                      E2E badges derived from ci: rows
-{{ accelerator }}                                    the picked value, inline</pre>
-  <p>No section schema. No phases. No step ids — a <b>deliberate trade-off</b>
-     (no resume-from-step); optional stable ids are the designed escape hatch
-     if flake tracking ever needs them.</p>
+  <h2>Other trade-offs</h2>
+  <table>
+    <tr><th></th><th>pr1988 (baseline)</th><th>annotated-md</th><th>jinja-md</th></tr>
+    <tr><td>Source of truth</td><td>guide.yaml + README template</td>
+        <td>one plain-markdown file</td><td>one Jinja2 template + guide.yaml</td></tr>
+    <tr><td>Parser to maintain</td><td>~800 lines (schema + renderer + checker)</td>
+        <td>~300 lines bespoke document parsing</td>
+        <td class="ok"><b>none</b> — Jinja/YAML parse everything</td></tr>
+    <tr><td>Syntax familiarity</td><td>YAML, custom schema</td>
+        <td>invented directives</td><td>standard Jinja (Ansible/Helm/Hugo)</td></tr>
+    <tr><td>Step identity & provenance</td><td>section + position</td>
+        <td>positional; hand-threaded provenance</td>
+        <td>optional ids; file:line from Jinja parse time</td></tr>
+    <tr><td>Exhaustiveness safety</td><td class="no">none</td>
+        <td>heuristic warnings</td><td>explicit group check + {% else %}</td></tr>
+    <tr><td>Migration</td><td>bash → YAML per guide</td>
+        <td class="ok">incremental annotation</td><td>convert README → template</td></tr>
+    <tr><td>Dependencies</td><td>PyYAML</td><td>PyYAML</td><td>PyYAML + Jinja2</td></tr>
+  </table>
 </section>
 
 <section class="slide">
-  <h2>Dimensions: pick in order, constrain by rule</h2>
-<pre>dimensions:                        # declaration order = pick order
-  infra_provider:   { values: [base, gke] }
-  router_mode:      { values: [standalone, gateway] }
-  gateway_provider: { values: [none, gke, istio, agentgateway] }
-  accelerator:      { values: [gpu, amd, xpu, hpu, tpu/v6, tpu/v7, cpu] }
-  model_server:     { values: [vllm, sglang, trtllm] }
-  model:            { values: [Qwen/Qwen3-32B, openai/gpt-oss-120b] }
-  monitoring:       { values: ["off", "on"] }
-rules:                             # earlier dims narrow later dims
-  - when:  { router_mode: standalone }
-    allow: { gateway_provider: [none] }
-  - when:  { infra_provider: gke }
-    allow: { accelerator: [gpu, tpu/v6, tpu/v7] }
-ci:        # tested cells; badge:/workflow: rows also generate the E2E badges
-  - { infra_provider: gke, …, badge: E2E (GKE TPU v6e), workflow: …-x.yaml }</pre>
-  <p><b class="a">672</b> raw combinations → <b class="a">96</b> valid → <b class="a">8</b> CI jobs.
-     What used to be an env-var comment is a dimension — rules, not comments,
-     forbid incoherent mixes (GKE gateway class on a non-GKE cluster).</p>
+  <h2>Inside jinja-markdown — the authoring model</h2>
+<pre>{% if model_server in ["vllm", "sglang"] %}          conditionals over anything
+{% step group="router-values" %}                     inline executable step —
+export ROUTER_VALUES="-f ${REPO_ROOT}/guides/…"      rendered as a bash fence
+{% endstep %}                                        AND recorded for the plan
+{% endif %}
+
+{% include "prereqs.md.j2" %}                        shared sections, once
+
+{{ configure_step() }}                               generated: your picks as
+                                                     env vars (${ACCELERATOR}…)</pre>
+  <p>Steps live inline in the narrative. Dimension picks become environment
+     variables via one generated step, so bodies stay plain, copy-pasteable
+     shell. Groups + <code>{% else %}</code> + StrictUndefined + bash&nbsp;-n
+     catch coverage gaps, typos and syntax errors at validate time.</p>
 </section>
 
 <section class="slide">
-  <h2>Derived artifacts</h2>
-<pre>guide.template.md ──┬── render-md ───▶ readonly-guide.md    committed GitHub copy
-(authored source)   ├── render-html ─▶ readonly-guide.html  interactive picker page
-                    ├── plan ────────▶ yaml / bash          executable CI run
-                    ├── matrix ──────▶ ci cells             the CI job matrix
-                    └── validate ────▶ pass / fail          PR gate (+ warnings)</pre>
-<pre># every PR (cheap): dry-run — env wiring, helm template, kustomize build.
-# Touches NO cluster: runs on any PR runner with zero credentials.
-guidemd.py plan guide.template.md --set … --skip ci=skip --skip dry-run=skip | bash
-
-# nightly / matrix (real): e2e — installs, waits, asserted verification, benchmark
-guidemd.py plan guide.template.md --set … --skip ci=skip --skip e2e=skip | bash</pre>
-  <p class="sub">Steps default to both; <code>dry-run=skip</code> marks real-world steps,
-     <code>e2e=skip hide=true</code> their hidden stand-ins. Verification is asserted,
-     not eyeballed: <code>curl -fsS</code> + <code>jq -e</code> fail the run unless the
-     router returns a real completion.</p>
+  <h2>The user journey</h2>
+<pre>WRITE                 edit guide.md.j2 / guide.yaml / common/*.md.j2
+  │
+PREVIEW & CHECK       guidegen.py render &lt;guide&gt; --set accelerator=tpu/v6
+  │                   guidegen.py validate &lt;guide&gt;
+  │
+REGENERATE & COMMIT   guidegen.py render-md &lt;guide&gt;
+  │                   readonly-guide.md + variants/ for CI-tested cells
+  │
+PR GATE (CI)          validate + cluster-free dry-run per matrix cell
+  │ merge
+  ├── NIGHTLY CI      matrix --github → per cell: e2e plan | bash
+  └── WEBSITE BUILD   emit-docusaurus at the release tag → llm-d.ai</pre>
 </section>
 
 <section class="slide">
-  <h2>Guardrails — what the gate catches</h2>
+  <h2>End-to-end surfaces</h2>
   <ul>
-    <li><b>Errors:</b> stale <code>readonly-guide.md</code> · unmarked bash fence ·
-        undeclared step tag (<code>dry-run=skpi</code>) · unresolved import param ·
-        untested/incomplete <code>ci:</code> row</li>
-    <li><b>Warnings:</b> dead <code>when</code> region (no supported combo can enter) ·
-        a <code>when</code>-group that leaves some combo matching <b>no branch</b> —
-        the "add a value later, silently lose commands" trap ·
-        <code>validate --cells</code> prints per-variant step counts</li>
-    <li><b>Every diagnostic names the real <code>file:line</code></b> — through import
-        expansion, so an error inside a shared fragment points at the fragment</li>
-    <li><b>Coverage gate</b> vs the upstream guide: 63/88 items verbatim,
-        25 reviewed waivers, <b class="a">0 missing</b> — "no loss of information",
-        enforced, with stale waivers flagged too</li>
-    <li><b>24 tests</b> over all 96 variants: placeholder-free renders,
-        <code>bash -n</code>-valid plans, cluster-free dry-runs</li>
+    <li><b>Website:</b> dropdowns in dimension order (invalid combos unselectable);
+        each variant is its own <i>static</i> page — search/SEO/no-JS safe, deep-linkable;
+        <span class="ok">✓ CI-tested</span> / <span class="no">⚠ supported</span> badge per pick</li>
+    <li><b>GitHub / local:</b> default doc opens with a configuration table —
+        CI-tested rows link to pre-rendered variant guides; the long tail points to the
+        website or <code>render --set</code></li>
+    <li><b>CI:</b> <code>matrix --github</code> emits the job matrix; each job runs
+        <code>plan --set … --skip ci=skip --skip dry-run=skip | bash</code> (every PR,
+        zero credentials) or the e2e flavor nightly — asserted verification, stable step
+        ids, file:line provenance in every log line</li>
   </ul>
 </section>
 
 <section class="slide">
-  <h2>Live demo</h2>
+  <h2>Our asks</h2>
   <ul>
-    <li><b>Reader:</b> open <code>readonly-guide.html</code> — pick gke → accelerator menu
-        narrows; pick standalone → gateway provider locks to <code>none</code>; header
-        shows <span class="ok">✓ CI-tested</span> or <span class="warn">⚠ supported,
-        not CI-tested</span>; URL is shareable</li>
-    <li><b>GitHub:</b> <code>readonly-guide.md</code> — default path linear with real
-        values (no <code>{{ }}</code>), 10 <i>Alternative</i> sections collapsed,
-        E2E badges generated from the <code>ci:</code> matrix</li>
-    <li><b>Writer:</b> <code>guide.template.md</code> — 6 import lines; the helm/kubectl
-        mechanics live once in <code>guides/common/</code></li>
-    <li><b>CI:</b> <code>plan … --format yaml</code> — structured steps, each citing its
-        source <code>file:line</code>; <code>matrix --github</code> — the 8 tested cells</li>
+    <li><b>Align on the requirements first</b> — before jumping to any solution</li>
+    <li><b>Acknowledge the cost</b> — any chosen solution is a non-trivial investment
+        (migration of existing guides, CI integration, website build) and needs
+        project-leader alignment and commitment</li>
   </ul>
-</section>
-
-<section class="slide">
-  <h2>Status & next steps</h2>
-  <ul>
-    <li>✅ Full-fidelity port of upstream <code>optimized-baseline</code> —
-        coverage gate enforced (0 missing, waivers reviewed)</li>
-    <li>✅ One ~1,100-line Python file (PyYAML only) + 130-line coverage gate +
-        24-test suite — no framework, no build step</li>
-    <li><b>Next:</b> dogfood the PR gate as a GitHub Actions workflow in this repo ·
-        port a <b>second guide</b> (prove fragment reuse, measure migration cost) ·
-        llm-d.ai: <b>v0</b> sync <code>readonly-guide.md</code> through the existing
-        pipeline (zero site changes), <b>v1</b> <code>render-mdx</code> + one
-        <code>GuidePicker</code> component · upstream RFC to llm-d</li>
-  </ul>
-  <p class="sub">Builds on PR #1988's direction: machine-readable guides — moving the
-     source of truth into the markdown itself.</p>
+  <p class="sub">PoCs, tests and full-fidelity ports of <code>optimized-baseline</code>:
+     <a href="https://github.com/liu-cong/guidemd-demo">github.com/liu-cong/guidemd-demo</a></p>
 </section>
 
 <div class="foot"><span id="pos"></span> · ←/→</div>
