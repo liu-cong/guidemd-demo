@@ -131,7 +131,7 @@ Jinja2 template + data file
 | Parser to maintain | ~800 lines across the validate/render/check script triad | ~300 lines of bespoke document parsing (fences, comments, provenance) | **none** — Jinja parses everything, incl. the `{% step %}` tag via Jinja's extension API |
 | Authoring flow | two files: write runs in YAML, then place them into the README — can be tedious when there are many steps | single file — steps written in-place in the narrative | single file — steps written in-place in the narrative |
 | Runnable step structural integrity and ease of validation/link | strong | loose, relies on parsing `step` | same as 2 |
-| Runnable step extensibility | Natual to extend the yaml schema | Requires adding attributes to the `step`, doable but can grow ugly if there are too many attributes to add | |Same as 2|
+| Runnable step extensibility | Natual to extend the yaml schema | Requires adding attributes to the `step`, doable but can grow ugly if there are too many attributes to add | Same as 2|
 
 
 - Every option invents *something*: the YAML approach invents a schema (a
