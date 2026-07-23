@@ -112,7 +112,7 @@ choice: *what the authored source is* — annotated plain markdown
 Jinja2 template + data file
 ([`prototypes/jinja-markdown/`](prototypes/jinja-markdown/)).
 
-### How the PoCs measure against the requirements
+### Requirements coverage
 
 | Requirement | [`pr1988-guide-yaml`](prototypes/pr1988-guide-yaml/) (baseline) | [`annotated-markdown`](prototypes/annotated-markdown/) | [`jinja-markdown`](prototypes/jinja-markdown/) |
 | --- | --- | --- | --- |
@@ -123,9 +123,19 @@ Jinja2 template + data file
 | **Writer P1** · common sections maintained once | ✖ none | `<!-- import -->` fragments with parameters, automatic heading re-basing | `{% include %}` partials (Jinja macros where parameters are needed) |
 | **CI P0** · derived executable, verifiable runs | partial — CI still scrapes the README in places | `plan` derived from the source; steps tagged, tag keys declared | `plan` is the *same render* as the docs; stable step ids + template `file:line` provenance |
 | **CI P1** · affordable per-PR validation | schema + drift check only; no dry-run tier | cluster-free dry-run per matrix cell + scheduled e2e | cluster-free dry-run per matrix cell + scheduled e2e |
-| *Engineering* · parser to maintain | ~800 lines (schema checker + renderer + README checker) | ~300 lines of bespoke document parsing | none — Jinja/YAML parse everything, incl. the `{% step %}` tag via Jinja's extension API |
-| *Engineering* · migration of existing guides | move each README's bash into `guide.yaml` | incremental — annotate a plain README step by step | conversion — turn a README into a template |
-| *Engineering* · dependencies | PyYAML | PyYAML | PyYAML + Jinja2 |
+
+### Other trade-offs
+
+| | `pr1988-guide-yaml` (baseline) | `annotated-markdown` | `jinja-markdown` |
+| --- | --- | --- | --- |
+| Source of truth | `guide.yaml` (bash steps as YAML data) + a shared README template | **one plain-markdown file** with invisible comment directives (`when` / `import` / `step`) | **one Jinja2 template** + `guide.yaml`: `{% if %}` / `{% include %}` / inline `{% step %}` blocks |
+| Authored file readable as-is | ✖ — YAML isn't a doc; readers get the rendered README | ✔ — renders on GitHub; zero annotations = valid guide | prose reads fine, but it's a template — readers get generated artifacts |
+| Parser to maintain | ~800 lines across the validate/render/check script triad | ~300 lines of bespoke document parsing (fences, comments, provenance) | **none** — Jinja parses everything, incl. the `{% step %}` tag via Jinja's extension API |
+| Syntax familiarity | plain YAML, custom schema | invented directives, this compiler only | standard Jinja — known from Ansible/Helm/Hugo, editor-supported |
+| Step identity & provenance | named sections + step position in the YAML | positional; provenance hand-threaded through import expansion | optional `id=`; template `file:line` baked in by Jinja at parse time |
+| Exhaustiveness safety | none — no dimensions/rules matrix | heuristic warnings over adjacent `when` groups | explicit `group=` partition check + `{% else %}` |
+| Migration of existing guides | move each README's bash into `guide.yaml` | incremental — annotate a plain README step by step | conversion — turn a README into a template |
+| Dependencies | PyYAML | PyYAML | PyYAML + Jinja2 |
 
 ## Quick start
 
