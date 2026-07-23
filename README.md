@@ -4,33 +4,6 @@ One source of truth per guide. Everything else — the docs pages, the GitHub
 reading copy, the CI runs, the job matrix — is derived from it and can never
 drift from it.
 
-## Background
-
-The current pain points for llm-d guides include:
-
-**For guide readers:**
-
-- Monolithic guides covering multiple dimensions (e.g., infra provider,
-  accelerator, model server) are distracting for users focused on a specific
-  configuration.
-- Determining support status or locating test results for specific
-  configuration combinations (e.g., "Can I run PD disaggregation with RDMA on
-  TPU using SGLang?") is difficult.
-
-**For guide writers:**
-
-- Significant portions of most guides contain duplicated content (such as
-  router installation steps), leading to consistency drift over time.
-- No structured mechanism exists to add dimension-specific content (e.g.,
-  adding a [model streamer](https://github.com/llm-d/llm-d/issues/1284) for
-  GKE TPU) without cluttering the entire guide.
-
-**For llm-d CI:**
-
-- The lack of a defined contract between the guide and the CI pipeline makes
-  "magical parsing" fragile, often requiring hacky patches to accommodate
-  guide updates.
-
 ## Requirements
 
 *Priority definitions — P0: required; P1: highly desirable but negotiable;
@@ -69,33 +42,7 @@ P2: nice to have.*
   out-of-the-box recipes provided by llm-d well-lit path guides with minimal
   customization (e.g., modifying the installation namespace).
 
-## Design principles
-
-1. **Single source of truth:** Avoid forks per dimension value or parallel
-   documentation tracks.
-2. **Automated generation:** Readers and CI consume derived artifacts. A
-   `validate` gate prevents PR merges if drift occurs.
-3. **CI as a standard user:** The CI pipeline executes guide steps
-   sequentially without interpreting custom semantics.
-4. **Structured guide dimensions:** Dimensions allow owners to author
-   branches in isolation while providing readers with a distraction-free
-   contextual guide. CI configuration is auto-generated for a particular
-   configuration. All supported and CI-validated configurations are
-   declarative.
-5. **Composition over duplication:** Shared sections are managed as imported
-   fragments with parameters.
-
-## Design space
-
-Balancing an interactive reading experience, an intuitive writing workflow,
-and maintainable tooling is challenging. This repository holds multiple
-proof-of-concepts (PoCs) — none is perfect.
-
-Our asks:
-
-- Let's align on the requirements first before jumping to any solutions.
-- Acknowledge that any chosen solution will incur non-trivial costs,
-  requiring project leader alignment and commitment.
+Please refer to the [doc](https://docs.google.com/document/d/1Nd3YFRM4IT8_pW03KhdSva7aGuGUlNY2hKZ9ZxZcqSU/edit?tab=t.0) for latest updates of requirements.
 
 ## The prototypes
 
