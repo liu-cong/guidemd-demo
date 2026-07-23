@@ -6,16 +6,16 @@
 This document shows the **default configuration**. Every CI-tested
 configuration has a pre-rendered guide:
 
-| Infra provider | Router mode | Gateway provider | Accelerator | Model server | Model | Prometheus monitoring | Guide |
-|---|---|---|---|---|---|---|---|
-| base | standalone | none | gpu | vllm | Qwen/Qwen3-32B | off | **this document** |
-| base | standalone | none | gpu | vllm | Qwen/Qwen3-32B | on | [open](variants/base-standalone-none-gpu-vllm-QwenQwen3-32B-on.md) |
-| base | gateway | istio | gpu | vllm | Qwen/Qwen3-32B | off | [open](variants/base-gateway-istio-gpu-vllm-QwenQwen3-32B-off.md) |
-| gke | standalone | none | gpu | vllm | Qwen/Qwen3-32B | off | [open](variants/gke-standalone-none-gpu-vllm-QwenQwen3-32B-off.md) |
-| gke | standalone | none | tpu/v6 | vllm | Qwen/Qwen3-32B | off | [open](variants/gke-standalone-none-tpuv6-vllm-QwenQwen3-32B-off.md) |
-| base | standalone | none | amd | vllm | Qwen/Qwen3-32B | off | [open](variants/base-standalone-none-amd-vllm-QwenQwen3-32B-off.md) |
-| base | standalone | none | xpu | vllm | Qwen/Qwen3-32B | off | [open](variants/base-standalone-none-xpu-vllm-QwenQwen3-32B-off.md) |
-| base | standalone | none | gpu | sglang | Qwen/Qwen3-32B | off | [open](variants/base-standalone-none-gpu-sglang-QwenQwen3-32B-off.md) |
+| Infra provider | Router mode | Gateway provider | Accelerator | Model server | Model | Prometheus monitoring | CI | Guide |
+|---|---|---|---|---|---|---|---|---|
+| base | standalone | none | gpu | vllm | Qwen/Qwen3-32B | off | ✓ tested | **this document** |
+| base | standalone | none | gpu | vllm | Qwen/Qwen3-32B | on | ✓ tested | [open](variants/base-standalone-none-gpu-vllm-QwenQwen3-32B-on.md) |
+| base | gateway | istio | gpu | vllm | Qwen/Qwen3-32B | off | ✓ tested | [open](variants/base-gateway-istio-gpu-vllm-QwenQwen3-32B-off.md) |
+| gke | standalone | none | gpu | vllm | Qwen/Qwen3-32B | off | ✓ tested | [open](variants/gke-standalone-none-gpu-vllm-QwenQwen3-32B-off.md) |
+| gke | standalone | none | tpu/v6 | vllm | Qwen/Qwen3-32B | off | ✓ tested | [open](variants/gke-standalone-none-tpuv6-vllm-QwenQwen3-32B-off.md) |
+| base | standalone | none | amd | vllm | Qwen/Qwen3-32B | off | ✓ tested | [open](variants/base-standalone-none-amd-vllm-QwenQwen3-32B-off.md) |
+| base | standalone | none | xpu | vllm | Qwen/Qwen3-32B | off | ✓ tested | [open](variants/base-standalone-none-xpu-vllm-QwenQwen3-32B-off.md) |
+| base | standalone | none | gpu | sglang | Qwen/Qwen3-32B | off | ✓ tested | [open](variants/base-standalone-none-gpu-sglang-QwenQwen3-32B-off.md) |
 
 The other supported combinations (88 of 96) are served by the interactive page, or render yours locally: `guidegen.py render <guide dir> --set dim=value …`.
 

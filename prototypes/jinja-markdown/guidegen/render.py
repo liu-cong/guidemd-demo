@@ -38,8 +38,8 @@ def _config_table(guide):
         "This document shows the **default configuration**. Every CI-tested",
         "configuration has a pre-rendered guide:",
         "",
-        "| " + " | ".join(labels) + " | Guide |",
-        "|" + "---|" * (len(labels) + 1),
+        "| " + " | ".join(labels) + " | CI | Guide |",
+        "|" + "---|" * (len(labels) + 2),
     ]
     for cell in m.ci:
         row = " | ".join(cell[d] for d in m.order)
@@ -47,7 +47,7 @@ def _config_table(guide):
             link = "**this document**"
         else:
             link = f"[open]({VARIANTS_DIR}/{variant_slug(cell, m.order)}.md)"
-        lines.append(f"| {row} | {link} |")
+        lines.append(f"| {row} | ✓ tested | {link} |")
     lines += [
         "",
         f"The other supported combinations ({len(m.supported) - len(m.ci)} of "

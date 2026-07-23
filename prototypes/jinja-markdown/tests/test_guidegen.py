@@ -114,6 +114,7 @@ class PortedGuideTests(unittest.TestCase):
         self.assertNotIn("<details>", index)         # table is not collapsed
         # only CI cells are listed: default + 7 linked pre-rendered copies
         self.assertEqual(index.count("](variants/"), 7)
+        self.assertEqual(index.count("✓ tested"), 8)  # CI column on every row
         self.assertIn("The other supported combinations (88 of 96)", index)
 
     def test_variant_files_only_for_ci_cells(self):

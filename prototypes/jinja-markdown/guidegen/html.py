@@ -22,6 +22,8 @@ HTML_PAGE = """<!DOCTYPE html>
                letter-spacing: 0.05em; color: var(--muted); }
   .dim select { font-size: 0.9rem; padding: 0.25rem 0.5rem; border: 1px solid var(--border);
                 border-radius: 6px; background: #fff; }
+  #tested { margin-left: auto; font-size: 0.8rem; }
+  #tested .yes { color: #15803d; } #tested .no { color: #b45309; }
   main { max-width: 860px; margin: 0 auto; padding: 1rem 2rem 4rem; }
   main pre { background: #16161d; color: #e8e8f0; padding: 1rem; border-radius: 8px;
              overflow-x: auto; font-size: 0.85rem; line-height: 1.5; }
@@ -63,6 +65,8 @@ ORDER.forEach((dim, k) => {
   sel.addEventListener('change', () => cascade(k));
   wrap.append(label, sel); header.appendChild(wrap); selects[dim] = sel;
 });
+const tested = document.createElement('div');
+tested.id = 'tested'; header.appendChild(tested);
 function cascade(changed) {
   const picks = {};
   ORDER.forEach((dim, k) => {
@@ -83,6 +87,9 @@ function show(cell, updateUrl = true) {
     picks[dim] = cell[dim];
   });
   document.getElementById('content').innerHTML = marked.parse(GUIDE.docs[key(cell)]);
+  const isTested = GUIDE.ci.some(c => ORDER.every(d => c[d] === cell[d]));
+  tested.innerHTML = isTested ? '<span class="yes">✓ CI-tested configuration</span>'
+                              : '<span class="no">⚠ supported, not CI-tested</span>';
   if (updateUrl) history.replaceState(null, '', '?' + new URLSearchParams(cell));
 }
 const params = new URLSearchParams(location.search);
@@ -107,6 +114,7 @@ def render_html(guide):
                        for d, s in guide.matrix.dims.items()},
         "defaults": guide.matrix.defaults,
         "supported": guide.matrix.supported,
+        "ci": guide.matrix.ci,
         "docs": docs,
     }).replace("</", "<\\/")
     title = guide.meta.get("title", guide.meta.get("name", ""))
